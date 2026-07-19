@@ -6,6 +6,8 @@ import dayjs from 'dayjs';
 import SectionHeader from '@/features/travel/components/SectionHeader';
 import { useHostedExperiences } from '@/hooks/useHostedExperiences';
 import { useProviderBookings } from '@/hooks/useProviderBookings';
+import { useProviderProfile } from '@/hooks/useProviderProfile';
+import { useTravelAnalyticsSnapshots } from '@/hooks/useTravelAnalyticsSnapshots';
 import { useTravelOperationsSummary } from '@/hooks/useTravelOperationsSummary';
 import { useTheme } from '@/theme/ThemeContext';
 import { ManageStackParamList } from '@/navigation/ManageStackNavigator';
@@ -22,7 +24,9 @@ export default function ManageScreen() {
     updateStatus,
     isUpdating,
   } = useProviderBookings();
+  const { profile } = useProviderProfile();
   const { data: operationsSummary } = useTravelOperationsSummary();
+  const { snapshots, captureSnapshot, isCapturing } = useTravelAnalyticsSnapshots();
 
   const handleToggleStatus = async (experienceId: string) => {
     const experience = experiences.find((item) => item.id === experienceId);
@@ -48,6 +52,17 @@ export default function ManageScreen() {
       Alert.alert(
         'Could not update booking',
         updateError instanceof Error ? updateError.message : 'Something went wrong.'
+      );
+    }
+  };
+
+  const handleCaptureSnapshot = async () => {
+    try {
+      await captureSnapshot();
+    } catch (captureError) {
+      Alert.alert(
+        'Could not capture analytics snapshot',
+        captureError instanceof Error ? captureError.message : 'Something went wrong.'
       );
     }
   };
@@ -78,6 +93,33 @@ export default function ManageScreen() {
             {operationsSummary ? `${operationsSummary.currency} ${operationsSummary.projectedRevenue}` : 'USD 0'}
           </Text>
           <Text style={[styles.statLabel, { color: colors.subtext }]}>Projected revenue</Text>
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <SectionHeader
+          title="Release workflows"
+          subtitle="Provider onboarding, moderation, and analytics snapshots support the move from MVP into controlled production operations."
+        />
+        <View style={styles.actionsGrid}>
+          <Pressable
+            style={[styles.workflowCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={() => navigation.navigate('ProviderOnboarding')}
+          >
+            <Text style={[styles.workflowTitle, { color: colors.text }]}>Provider onboarding</Text>
+            <Text style={[styles.workflowBody, { color: colors.subtext }]}>
+              Status: {profile?.approvalStatus?.replace('_', ' ') ?? 'not started'}
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.workflowCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={() => navigation.navigate('ModerationCenter')}
+          >
+            <Text style={[styles.workflowTitle, { color: colors.text }]}>Moderation center</Text>
+            <Text style={[styles.workflowBody, { color: colors.subtext }]}>
+              Review provider applications and pending experience submissions.
+            </Text>
+          </Pressable>
         </View>
       </View>
 
@@ -276,6 +318,41 @@ export default function ManageScreen() {
             ))
           : null}
       </View>
+
+      <View style={styles.section}>
+        <SectionHeader
+          title="Analytics snapshots"
+          subtitle="Persisted summary records give you a lightweight operational trail before full BI tooling is connected."
+          actionLabel={isCapturing ? 'Saving...' : 'Capture'}
+          onPressAction={handleCaptureSnapshot}
+        />
+
+        {snapshots.length === 0 ? (
+          <View style={[styles.messageCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.messageTitle, { color: colors.text }]}>No snapshots yet</Text>
+            <Text style={[styles.messageBody, { color: colors.subtext }]}>
+              Capture a provider analytics snapshot to persist current live inventory, booking counts, and projected revenue.
+            </Text>
+          </View>
+        ) : (
+          snapshots.map((snapshot) => (
+            <View
+              key={snapshot.id}
+              style={[styles.inventoryCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+            >
+              <Text style={[styles.inventoryTitle, { color: colors.text }]}>
+                {dayjs(snapshot.capturedAt).format('MMM D, YYYY · h:mm A')}
+              </Text>
+              <Text style={[styles.inventoryBody, { color: colors.subtext }]}>
+                Live experiences: {snapshot.liveExperiences} · Pending bookings: {snapshot.pendingBookings} · Confirmed bookings: {snapshot.confirmedBookings}
+              </Text>
+              <Text style={[styles.inventoryMeta, { color: colors.subtext }]}>
+                Revenue snapshot: {snapshot.currency} {snapshot.projectedRevenue}
+              </Text>
+            </View>
+          ))
+        )}
+      </View>
     </ScrollView>
   );
 }
@@ -320,6 +397,24 @@ const styles = StyleSheet.create({
   },
   section: {
     marginTop: 28,
+  },
+  actionsGrid: {
+    gap: 12,
+    marginTop: 16,
+  },
+  workflowCard: {
+    borderWidth: 1,
+    borderRadius: 20,
+    padding: 18,
+  },
+  workflowTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  workflowBody: {
+    fontSize: 14,
+    lineHeight: 21,
+    marginTop: 8,
   },
   messageCard: {
     borderWidth: 1,
