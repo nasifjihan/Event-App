@@ -1181,3 +1181,226 @@ export async function updateNotificationPreferences(
   setStoredNotificationPreferences(userId, preferences);
   return preferences;
 }
+
+export async function fetchProviderProfile(userId: string): Promise<TravelProviderProfile> {
+  const { data, error } = await supabase
+    .from('provider_profiles')
+    .select('user_id, business_name, contact_email, portfolio_url, notes, approval_status, reviewed_at')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (!error && data) {
+    return mapProviderProfile(data as ProviderProfileRow);
+  }
+
+  if (!error) {
+    return getStoredProviderProfile(userId);
+  }
+
+  if (isMissingTravelSchemaError(error.message)) {
+    return getStoredProviderProfile(userId);
+  }
+
+  throw new Error(error.message);
+}
+
+export interface SubmitProviderOnboardingInput {
+  userId: string;
+  businessName: string;
+  contactEmail: string;
+  portfolioUrl: string;
+  notes: string;
+}
+
+export async function submitProviderOnboarding(
+  input: SubmitProviderOnboardingInput
+): Promise<TravelProviderProfile> {
+  const payload = {
+    user_id: input.userId,
+    business_name: input.businessName,
+    contact_email: input.contactEmail || null,
+    portfolio_url: input.portfolioUrl || null,
+    notes: input.notes || null,
+    approval_status: 'pending',
+    updated_at: new Date().toISOString(),
+  };
+
+  const { data, error } = await supabase
+    .from('provider_profiles')
+    .upsert(payload, { onConflict: 'user_id', ignoreDuplicates: false })
+    .select('user_id, business_name, contact_email, portfolio_url, notes, approval_status, reviewed_at')
+    .single();
+
+  if (!error && data) {
+    return mapProviderProfile(data as ProviderProfileRow);
+  }
+
+  if (error && !isMissingTravelSchemaError(error.message)) {
+    throw new Error(error.message);
+  }
+
+  const fallback: TravelProviderProfile = {
+    userId: input.userId,
+    businessName: input.businessName,
+    contactEmail: input.contactEmail || null,
+    portfolioUrl: input.portfolioUrl || null,
+    notes: input.notes || null,
+    approvalStatus: 'pending',
+    reviewedAt: null,
+  };
+  setStoredProviderProfile(fallback);
+  return fallback;
+}
+
+export async function fetchModerationQueue(): Promise<TravelModerationItem[]> {
+  const [providersResult, experiencesResult] = await Promise.all([
+    supabase
+      .from('provider_profiles')
+      .select('user_id, business_name, contact_email, notes, approval_status, created_at')
+      .eq('approval_status', 'pending'),
+    supabase
+      .from('experiences')
+      .select('id, title, summary, status, created_at')
+      .eq('status', 'pending_review'),
+  ]);
+
+  const combinedMessage = [providersResult.error?.message, experiencesResult.error?.message]
+    .filter(Boolean)
+    .join(' ');
+
+  if (combinedMessage && !isMissingTravelSchemaError(combinedMessage)) {
+    throw new Error(combinedMessage);
+  }
+
+  const providerItems = (((providersResult.data as Array<ProviderProfileRow & { created_at?: string }> | null) ?? [])).map(
+    (provider) => ({
+      id: provider.user_id,
+      title: provider.business_name || 'Provider application',
+      entityType: 'provider' as const,
+      status: 'pending' as const,
+      submittedAt: provider.created_at ?? new Date().toISOString(),
+      submittedByLabel: provider.contact_email || 'Provider applicant',
+      notes: provider.notes ?? null,
+    })
+  );
+
+  const experienceItems = (((experiencesResult.data as Array<ExperienceRow & { created_at: string }> | null) ?? [])).map(
+    (experience) => ({
+      id: experience.id,
+      title: experience.title,
+      entityType: 'experience' as const,
+      status: 'pending' as const,
+      submittedAt: experience.created_at,
+      submittedByLabel: 'Provider submission',
+      notes: experience.summary ?? null,
+    })
+  );
+
+  return [...providerItems, ...experienceItems].sort(
+    (a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
+  );
+}
+
+export async function updateModerationItem(
+  item: Pick<TravelModerationItem, 'id' | 'entityType'>,
+  decision: 'approved' | 'rejected'
+): Promise<void> {
+  if (item.entityType === 'provider') {
+    const { error } = await supabase
+      .from('provider_profiles')
+      .update({
+        approval_status: decision,
+        reviewed_at: new Date().toISOString(),
+      })
+      .eq('user_id', item.id);
+
+    if (error && !isMissingTravelSchemaError(error.message)) {
+      throw new Error(error.message);
+    }
+    return;
+  }
+
+  const { error } = await supabase
+    .from('experiences')
+    .update({
+      status: decision === 'approved' ? 'live' : 'draft',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', item.id);
+
+  if (error && !isMissingTravelSchemaError(error.message)) {
+    throw new Error(error.message);
+  }
+}
+
+export async function captureTravelAnalyticsSnapshot(
+  userId: string
+): Promise<TravelAnalyticsSnapshot> {
+  const summary = await fetchTravelOperationsSummary(userId);
+  const { data, error } = await supabase
+    .from('analytics_snapshots')
+    .insert({
+      owner_user_id: userId,
+      live_experiences: summary.liveExperiences,
+      pending_bookings: summary.pendingBookings,
+      confirmed_bookings: summary.confirmedBookings,
+      projected_revenue: summary.projectedRevenue,
+      currency: summary.currency,
+    })
+    .select(
+      'id, captured_at, live_experiences, pending_bookings, confirmed_bookings, projected_revenue, currency'
+    )
+    .single();
+
+  if (!error && data) {
+    return mapAnalyticsSnapshot(data as AnalyticsSnapshotRow);
+  }
+
+  if (error && !isMissingTravelSchemaError(error.message)) {
+    throw new Error(error.message);
+  }
+
+  return {
+    id: `local-${Date.now()}`,
+    capturedAt: new Date().toISOString(),
+    liveExperiences: summary.liveExperiences,
+    pendingBookings: summary.pendingBookings,
+    confirmedBookings: summary.confirmedBookings,
+    projectedRevenue: summary.projectedRevenue,
+    currency: summary.currency,
+  };
+}
+
+export async function fetchTravelAnalyticsSnapshots(
+  userId: string
+): Promise<TravelAnalyticsSnapshot[]> {
+  const { data, error } = await supabase
+    .from('analytics_snapshots')
+    .select(
+      'id, captured_at, live_experiences, pending_bookings, confirmed_bookings, projected_revenue, currency'
+    )
+    .eq('owner_user_id', userId)
+    .order('captured_at', { ascending: false })
+    .limit(6);
+
+  if (!error) {
+    return ((data as AnalyticsSnapshotRow[] | null) ?? []).map(mapAnalyticsSnapshot);
+  }
+
+  if (isMissingTravelSchemaError(error.message)) {
+    const summary = await fetchTravelOperationsSummary(userId);
+    return [
+      {
+        id: 'computed-latest',
+        capturedAt: new Date().toISOString(),
+        liveExperiences: summary.liveExperiences,
+        pendingBookings: summary.pendingBookings,
+        confirmedBookings: summary.confirmedBookings,
+        projectedRevenue: summary.projectedRevenue,
+        currency: summary.currency,
+      },
+    ];
+  }
+
+  throw new Error(error.message);
+}
