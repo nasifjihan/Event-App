@@ -83,3 +83,20 @@ The next backend phase should move core product workflows to `supabase/travel_sc
   - traveler/provider notification preferences
 - `supabase/travel_schema.sql`
   - notification queue and booking-management policies
+
+## Phase 6 Assets
+
+- `src/screens/manage/ProviderOnboardingScreen.tsx`
+  - provider onboarding submission flow
+- `src/screens/manage/ModerationCenterScreen.tsx`
+  - admin moderation for providers and pending experiences
+- `src/hooks/useProviderProfile.ts`
+  - provider approval state and onboarding submission
+- `src/hooks/useModerationQueue.ts`
+  - moderation queue review actions
+- `src/hooks/useTravelAnalyticsSnapshots.ts`
+  - persisted analytics snapshot capture and history
+- `docs/release-readiness.md`
+  - deployment and production checklist
+- `eas.json`
+  - build profiles for development, preview, and production
