@@ -13,9 +13,9 @@
         "usesNonExemptEncryption": false
       },
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "We use your location to show nearby events.",
-        "NSCameraUsageDescription": "We use your camera to let you add photos to events.",
-        "NSPhotoLibraryUsageDescription": "We use your photo library to let you pick event photos."
+        "NSLocationWhenInUseUsageDescription": "We use your location to show nearby destinations and travel experiences.",
+        "NSCameraUsageDescription": "We use your camera to let providers add travel experience photos.",
+        "NSPhotoLibraryUsageDescription": "We use your photo library to let you select travel experience photos."
       }
     },
     "android": {
