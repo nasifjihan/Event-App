@@ -59,3 +59,16 @@ The next backend phase should move core product workflows to `supabase/travel_sc
   - provider management surface for hosted inventory
 - `src/hooks/useBookingHistory.ts`
   - traveler reservation history query
+
+## Phase 4 Assets
+
+- `src/navigation/TripsStackNavigator.tsx`
+  - adds a real trip-plan creation workflow
+- `src/navigation/ManageStackNavigator.tsx`
+  - adds hosted experience editing flow from the provider dashboard
+- `src/screens/travel/DestinationDetailScreen.tsx`
+  - destination storytelling and merchandising screen
+- `src/screens/trips/CreateTripPlanScreen.tsx`
+  - create trip plans from the app UI
+- `src/screens/manage/EditHostedExperienceScreen.tsx`
+  - edit native travel experiences after cutover

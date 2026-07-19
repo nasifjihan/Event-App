@@ -118,7 +118,11 @@ export default function ExploreScreen() {
         />
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalRow}>
           {destinations.map((destination) => (
-            <DestinationCard key={destination.id} destination={destination} />
+            <DestinationCard
+              key={destination.id}
+              destination={destination}
+              onPress={() => navigation.navigate('DestinationDetail', { destinationId: destination.id })}
+            />
           ))}
         </ScrollView>
       </View>

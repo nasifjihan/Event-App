@@ -1,12 +1,16 @@
 import React from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import PlanningCard from '@/features/travel/components/PlanningCard';
 import SectionHeader from '@/features/travel/components/SectionHeader';
 import { useTheme } from '@/theme/ThemeContext';
 import { useTripPlans } from '@/hooks/useTripPlans';
+import { TripsStackParamList } from '@/navigation/TripsStackNavigator';
 
 export default function TripsScreen() {
   const { colors } = useTheme();
+  const navigation = useNavigation<NativeStackNavigationProp<TripsStackParamList>>();
   const { data: tripPlans = [], isLoading, isError, error } = useTripPlans();
 
   return (
@@ -32,6 +36,8 @@ export default function TripsScreen() {
         <SectionHeader
           title="Planning board"
           subtitle="Modeled as a single place for travel operations, collaboration, and itinerary checkpoints."
+          actionLabel="New Plan"
+          onPressAction={() => navigation.navigate('CreateTripPlan')}
         />
         <View style={styles.list}>
           {isLoading ? <ActivityIndicator style={{ marginTop: 12 }} size="large" color={colors.text} /> : null}
@@ -52,7 +58,17 @@ export default function TripsScreen() {
             </View>
           ) : null}
           {!isLoading && !isError && tripPlans.map((item) => (
-            <PlanningCard key={item.id} item={item} />
+            <Pressable
+              key={item.id}
+              onPress={() =>
+                navigation.navigate('CreateTripPlan', {
+                  prefillTitle: item.title,
+                  prefillNotes: item.subtitle,
+                })
+              }
+            >
+              <PlanningCard item={item} />
+            </Pressable>
           ))}
         </View>
       </View>

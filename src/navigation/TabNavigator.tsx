@@ -1,9 +1,9 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import TravelStackNavigator from '@/navigation/TravelStackNavigator';
-import TripsScreen from '@/screens/trips/TripsScreen';
+import TripsStackNavigator from '@/navigation/TripsStackNavigator';
 import SavedScreen from '@/screens/saved/SavedScreen';
-import ManageScreen from '@/screens/manage/ManageScreen';
+import ManageStackNavigator from '@/navigation/ManageStackNavigator';
 import ProfileScreen from '@/screens/profile/ProfileScreen';
 import { useTheme } from '@/theme/ThemeContext';
 
@@ -31,9 +31,9 @@ export default function TabNavigator() {
       }}
     >
       <Tab.Screen name="Explore" component={TravelStackNavigator} />
-      <Tab.Screen name="Trips" component={TripsScreen} />
+      <Tab.Screen name="Trips" component={TripsStackNavigator} />
       <Tab.Screen name="Saved" component={SavedScreen} />
-      <Tab.Screen name="Manage" component={ManageScreen} />
+      <Tab.Screen name="Manage" component={ManageStackNavigator} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );

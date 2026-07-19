@@ -17,6 +17,7 @@ const PAGE_SIZE = 10;
 const COVER_IMAGES_BUCKET = 'event-covers';
 const FAVORITES_KEY_PREFIX = 'travel-favorites:';
 const RESERVATIONS_KEY_PREFIX = 'travel-reservations:';
+const TRIP_PLANS_KEY_PREFIX = 'travel-trip-plans:';
 
 interface ExperienceRow {
   id: string;
@@ -94,6 +95,22 @@ function getStoredIds(prefix: string, userId: string): string[] {
 
 function setStoredIds(prefix: string, userId: string, ids: string[]): void {
   setItem(`${prefix}${userId}`, JSON.stringify(ids));
+}
+
+function getStoredTripPlans(userId: string): TravelTripPlan[] {
+  const raw = getItem(`${TRIP_PLANS_KEY_PREFIX}${userId}`);
+  if (!raw) return [];
+
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as TravelTripPlan[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function setStoredTripPlans(userId: string, tripPlans: TravelTripPlan[]): void {
+  setItem(`${TRIP_PLANS_KEY_PREFIX}${userId}`, JSON.stringify(tripPlans));
 }
 
 function toggleStoredId(prefix: string, userId: string, id: string): boolean {
@@ -451,7 +468,8 @@ export async function fetchTripPlans(userId: string): Promise<TravelTripPlan[]> 
   }
 
   if (isMissingTravelSchemaError(error.message)) {
-    return planningBoardItems;
+    const storedPlans = getStoredTripPlans(userId);
+    return storedPlans.length > 0 ? storedPlans : planningBoardItems;
   }
 
   throw new Error(error.message);
@@ -614,6 +632,54 @@ export async function fetchHostedExperiences(userId: string): Promise<TravelExpe
   throw new Error(error.message);
 }
 
+export interface UpsertTravelExperienceInput {
+  experienceId: string;
+  title: string;
+  description: string;
+  locationName: string;
+  startsAt: Date;
+  localImageUri: string | null;
+  existingImageUrl: string | null;
+}
+
+export async function updateTravelExperience(input: UpsertTravelExperienceInput): Promise<TravelExperience> {
+  let coverImageUrl = input.existingImageUrl;
+
+  const existingExperienceResult = await supabase
+    .from('experiences')
+    .select('host_id')
+    .eq('id', input.experienceId)
+    .single();
+
+  if (existingExperienceResult.error) {
+    throw new Error(existingExperienceResult.error.message);
+  }
+
+  if (input.localImageUri && input.localImageUri !== input.existingImageUrl) {
+    coverImageUrl = await uploadTravelImage(input.localImageUri, existingExperienceResult.data.host_id);
+  }
+
+  const { data, error } = await supabase
+    .from('experiences')
+    .update({
+      title: input.title,
+      summary: input.description || null,
+      body: input.description || null,
+      meeting_point: input.locationName || null,
+      cover_image_url: coverImageUrl,
+      starts_at: input.startsAt.toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', input.experienceId)
+    .select(
+      'id, host_id, title, summary, body, cover_image_url, meeting_point, starts_at, created_at, status, price_amount, currency, duration_minutes, capacity'
+    )
+    .single();
+
+  if (error) throw new Error(error.message);
+  return mapExperience(data as ExperienceRow);
+}
+
 export async function toggleHostedExperienceStatus(experience: TravelExperience): Promise<void> {
   if (experience.source !== 'experience') {
     throw new Error('Legacy events should be migrated before using provider status controls.');
@@ -665,4 +731,67 @@ export async function fetchBookingHistory(userId: string): Promise<TravelBooking
   }
 
   throw new Error(error.message);
+}
+
+export async function fetchDestinationById(destinationId: string): Promise<TravelDestination> {
+  const { data, error } = await supabase
+    .from('destinations')
+    .select('id, title, country, summary, hero_image_url, is_featured')
+    .eq('id', destinationId)
+    .single();
+
+  if (!error && data) {
+    return mapDestination(data as DestinationRow);
+  }
+
+  const fallback = destinationSpotlights.find((destination) => destination.id === destinationId);
+  if (fallback) return fallback;
+
+  if (error && !isMissingTravelSchemaError(error.message)) {
+    throw new Error(error.message);
+  }
+
+  throw new Error('Destination not found');
+}
+
+export interface CreateTripPlanInput {
+  userId: string;
+  title: string;
+  startDate: string | null;
+  endDate: string | null;
+  notes: string;
+}
+
+export async function createTripPlan(input: CreateTripPlanInput): Promise<TravelTripPlan> {
+  const { data, error } = await supabase
+    .from('trip_plans')
+    .insert({
+      user_id: input.userId,
+      title: input.title,
+      start_date: input.startDate,
+      end_date: input.endDate,
+      notes: input.notes || null,
+      status: 'draft',
+    })
+    .select('id, title, start_date, end_date, status, notes')
+    .single();
+
+  if (error) {
+    if (isMissingTravelSchemaError(error.message)) {
+      const localPlan: TravelTripPlan = {
+        id: `local-${Date.now()}`,
+        title: input.title,
+        subtitle: input.notes || 'Created locally until the travel schema is applied.',
+        status: 'draft',
+        windowLabel:
+          input.startDate && input.endDate
+            ? `${input.startDate} - ${input.endDate}`
+            : 'Dates to be confirmed',
+      };
+      setStoredTripPlans(input.userId, [localPlan, ...getStoredTripPlans(input.userId)]);
+      return localPlan;
+    }
+    throw new Error(error.message);
+  }
+  return mapTripPlan(data as TripPlanRow);
 }

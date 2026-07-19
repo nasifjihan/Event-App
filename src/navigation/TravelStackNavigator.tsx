@@ -4,6 +4,7 @@ import ExploreScreen from '@/screens/explore/ExploreScreen';
 import CreateExperienceScreen from '@/screens/travel/CreateExperienceScreen';
 import PickExperienceLocationScreen from '@/screens/travel/PickExperienceLocationScreen';
 import ExperienceDetailScreen from '@/screens/travel/ExperienceDetailScreen';
+import DestinationDetailScreen from '@/screens/travel/DestinationDetailScreen';
 import { TravelExperience } from '@/types/travel';
 
 export interface PickedLocation {
@@ -17,6 +18,7 @@ export type TravelStackParamList = {
   CreateExperience: { pickedLocation?: PickedLocation } | undefined;
   PickExperienceLocation: undefined;
   ExperienceDetail: { event: TravelExperience };
+  DestinationDetail: { destinationId: string };
 };
 
 const Stack = createNativeStackNavigator<TravelStackParamList>();
@@ -42,6 +44,11 @@ export default function TravelStackNavigator() {
       <Stack.Screen
         name="ExperienceDetail"
         component={ExperienceDetailScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="DestinationDetail"
+        component={DestinationDetailScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>

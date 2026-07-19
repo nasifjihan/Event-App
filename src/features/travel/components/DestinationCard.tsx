@@ -1,15 +1,16 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Image } from 'expo-image';
 import { TravelDestination } from '@/types/travel';
 
 interface Props {
   destination: TravelDestination;
+  onPress?: () => void;
 }
 
-export default function DestinationCard({ destination }: Props) {
+export default function DestinationCard({ destination, onPress }: Props) {
   return (
-    <View style={styles.card}>
+    <Pressable style={styles.card} onPress={onPress}>
       <Image source={{ uri: destination.imageUrl }} style={styles.image} contentFit="cover" transition={150} />
       <View style={styles.overlay} />
       <View style={styles.content}>
@@ -20,7 +21,7 @@ export default function DestinationCard({ destination }: Props) {
           <Text style={styles.badgeText}>{destination.bestFor}</Text>
         </View>
       </View>
-    </View>
+    </Pressable>
   );
 }
 

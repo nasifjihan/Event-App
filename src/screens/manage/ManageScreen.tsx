@@ -1,15 +1,21 @@
 import React from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import SectionHeader from '@/features/travel/components/SectionHeader';
 import { useHostedExperiences } from '@/hooks/useHostedExperiences';
 import { useTheme } from '@/theme/ThemeContext';
+import { ManageStackParamList } from '@/navigation/ManageStackNavigator';
 
 export default function ManageScreen() {
   const { colors } = useTheme();
+  const navigation = useNavigation<NativeStackNavigationProp<ManageStackParamList>>();
   const { experiences, isLoading, isError, error, refetch, toggleStatus } = useHostedExperiences();
 
   const liveCount = experiences.filter((item) => item.status === 'live').length;
   const draftCount = experiences.filter((item) => item.status !== 'live').length;
+  const nativeCount = experiences.filter((item) => item.source === 'experience').length;
+  const legacyCount = experiences.filter((item) => item.source !== 'experience').length;
 
   const handleToggleStatus = async (experienceId: string) => {
     const experience = experiences.find((item) => item.id === experienceId);
@@ -49,6 +55,14 @@ export default function ManageScreen() {
         <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={[styles.statValue, { color: colors.text }]}>{draftCount}</Text>
           <Text style={[styles.statLabel, { color: colors.subtext }]}>Needs action</Text>
+        </View>
+        <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Text style={[styles.statValue, { color: colors.text }]}>{nativeCount}</Text>
+          <Text style={[styles.statLabel, { color: colors.subtext }]}>Native travel items</Text>
+        </View>
+        <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Text style={[styles.statValue, { color: colors.text }]}>{legacyCount}</Text>
+          <Text style={[styles.statLabel, { color: colors.subtext }]}>Legacy items pending cutover</Text>
         </View>
       </View>
 
@@ -102,6 +116,19 @@ export default function ManageScreen() {
                 </Text>
 
                 <View style={styles.actionsRow}>
+                  <Pressable
+                    style={[styles.secondaryButton, { backgroundColor: colors.background, borderColor: colors.border }]}
+                    onPress={() =>
+                      experience.source === 'experience'
+                        ? navigation.navigate('EditHostedExperience', { experience })
+                        : Alert.alert(
+                            'Migration required',
+                            'Run supabase/travel_cutover_from_events.sql before editing legacy items.'
+                          )
+                    }
+                  >
+                    <Text style={[styles.secondaryButtonText, { color: colors.text }]}>Edit</Text>
+                  </Pressable>
                   <Pressable
                     style={[styles.secondaryButton, { backgroundColor: colors.background, borderColor: colors.border }]}
                     onPress={() =>
