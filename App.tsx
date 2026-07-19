@@ -9,6 +9,7 @@ import OfflineBanner from '@/components/OfflineBanner';
 import { mmkvQueryPersister } from '@/services/queryPersister';
 import { setupNetworkStatusListener } from '@/services/networkStatus';
 import { ThemeProvider, useTheme } from '@/theme/ThemeContext';
+import { useTravelProfileBootstrap } from '@/hooks/useTravelProfileBootstrap';
 
 const ONE_DAY_MS = 1000 * 60 * 60 * 24;
 
@@ -45,6 +46,7 @@ export default function App() {
 // ThemeProvider, which wraps this component, not App() itself.
 function AppContent() {
   const { isDark } = useTheme();
+  useTravelProfileBootstrap();
 
   return (
     <>

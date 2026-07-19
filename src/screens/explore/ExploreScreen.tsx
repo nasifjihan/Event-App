@@ -15,15 +15,13 @@ import SectionHeader from '@/features/travel/components/SectionHeader';
 import CategoryChip from '@/features/travel/components/CategoryChip';
 import DestinationCard from '@/features/travel/components/DestinationCard';
 import ExperienceCard from '@/features/travel/components/ExperienceCard';
-import {
-  destinationSpotlights,
-  travelCategories,
-} from '@/features/travel/data/travelCollections';
+import { travelCategories } from '@/features/travel/data/travelCollections';
 import { TravelCategory } from '@/features/travel/types';
 import { TravelStackParamList } from '@/navigation/TravelStackNavigator';
-import { useEvents } from '@/hooks/useEvents';
-import { EventRow } from '@/types/event';
 import { useTheme } from '@/theme/ThemeContext';
+import { useTravelExperiences } from '@/hooks/useTravelExperiences';
+import { TravelExperience } from '@/types/travel';
+import { useFeaturedDestinations } from '@/hooks/useFeaturedDestinations';
 
 const CATEGORY_KEYWORDS: Record<string, RegExp> = {
   coastal: /(beach|coast|island|ocean|surf|bay)/i,
@@ -45,10 +43,11 @@ export default function ExploreScreen() {
     error,
     refetch,
     isRefetching,
-  } = useEvents(searchInput);
+  } = useTravelExperiences(searchInput);
+  const { data: destinations = [] } = useFeaturedDestinations();
 
   const allExperiences = useMemo(
-    () => data?.pages.flatMap((page) => page.events) ?? [],
+    () => data?.pages.flatMap((page) => page.experiences) ?? [],
     [data]
   );
 
@@ -75,7 +74,7 @@ export default function ExploreScreen() {
     .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime())
     .slice(0, 4);
 
-  const openExperience = (experience: EventRow) => {
+  const openExperience = (experience: TravelExperience) => {
     navigation.navigate('ExperienceDetail', { event: experience });
   };
 
@@ -118,7 +117,7 @@ export default function ExploreScreen() {
           subtitle="High-impact travel collections that make the app feel curated from the first screen."
         />
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalRow}>
-          {destinationSpotlights.map((destination) => (
+          {destinations.map((destination) => (
             <DestinationCard key={destination.id} destination={destination} />
           ))}
         </ScrollView>

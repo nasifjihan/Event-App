@@ -2,11 +2,11 @@ import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import dayjs from 'dayjs';
-import { EventRow } from '@/types/event';
 import { useTheme } from '@/theme/ThemeContext';
+import { TravelExperience } from '@/types/travel';
 
 interface Props {
-  experience: EventRow;
+  experience: TravelExperience;
   descriptor: string;
   onPress: () => void;
 }
@@ -37,6 +37,7 @@ export default function ExperienceCard({ experience, descriptor, onPress }: Prop
         </Text>
         <Text style={[styles.meta, { color: colors.subtext }]} numberOfLines={1}>
           {experience.location_name || 'Flexible destination'} · {dayjs(experience.starts_at).format('MMM D')}
+          {experience.price_amount != null ? ` · ${experience.currency ?? 'USD'} ${experience.price_amount}` : ''}
         </Text>
       </View>
     </Pressable>

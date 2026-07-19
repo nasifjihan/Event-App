@@ -1,10 +1,10 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
-import { DestinationSpotlight } from '@/features/travel/types';
+import { TravelDestination } from '@/types/travel';
 
 interface Props {
-  destination: DestinationSpotlight;
+  destination: TravelDestination;
 }
 
 export default function DestinationCard({ destination }: Props) {

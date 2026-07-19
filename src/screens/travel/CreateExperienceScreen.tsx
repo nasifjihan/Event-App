@@ -20,9 +20,9 @@ import { Image } from 'expo-image';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '@/hooks/useAuth';
-import { useCreateEvent } from '@/hooks/useCreateEvent';
 import { PickedLocation, TravelStackParamList } from '@/navigation/TravelStackNavigator';
 import { useTheme } from '@/theme/ThemeContext';
+import { useCreateTravelExperience } from '@/hooks/useCreateTravelExperience';
 
 const experienceSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters'),
@@ -37,7 +37,7 @@ export default function CreateExperienceScreen() {
   const route = useRoute<RouteProp<TravelStackParamList, 'CreateExperience'>>();
   const { user } = useAuth();
   const { colors } = useTheme();
-  const createEventMutation = useCreateEvent();
+  const createEventMutation = useCreateTravelExperience();
 
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [startsAt, setStartsAt] = useState<Date>(dayjs().add(7, 'day').hour(10).minute(0).toDate());

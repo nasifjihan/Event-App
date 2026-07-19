@@ -1,11 +1,16 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import SectionHeader from '@/features/travel/components/SectionHeader';
-import { destinationSpotlights } from '@/features/travel/data/travelCollections';
 import { useTheme } from '@/theme/ThemeContext';
+import { useFavoriteExperiences } from '@/hooks/useFavoriteExperiences';
+import { TravelStackParamList } from '@/navigation/TravelStackNavigator';
 
 export default function SavedScreen() {
   const { colors } = useTheme();
+  const navigation = useNavigation<NativeStackNavigationProp<TravelStackParamList>>();
+  const { favorites, isLoading, isError, error, refetch } = useFavoriteExperiences();
 
   return (
     <ScrollView
@@ -23,28 +28,53 @@ export default function SavedScreen() {
 
       <View style={styles.section}>
         <SectionHeader
-          title="Saved spotlights"
-          subtitle="Pinned inspiration that can later convert into itineraries or direct bookings."
+          title="Saved experiences"
+          subtitle="Favorites now read from the travel data layer and stay ready for itinerary planning."
+          actionLabel="Refresh"
+          onPressAction={() => refetch()}
         />
         <View style={styles.grid}>
-          {destinationSpotlights.map((destination) => (
-            <View
-              key={destination.id}
-              style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.border }]}
-            >
-              <Text style={[styles.tileCountry, { color: colors.subtext }]}>{destination.country}</Text>
-              <Text style={[styles.tileTitle, { color: colors.text }]}>{destination.title}</Text>
-              <Text style={[styles.tileBody, { color: colors.subtext }]}>{destination.tagline}</Text>
+          {isLoading ? <ActivityIndicator style={{ marginTop: 12 }} size="large" color={colors.text} /> : null}
+          {isError ? (
+            <View style={[styles.notesCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Text style={[styles.notesTitle, { color: colors.text }]}>Favorites are unavailable</Text>
+              <Text style={[styles.notesBody, { color: colors.subtext }]}>
+                {error instanceof Error ? error.message : 'Please try again.'}
+              </Text>
             </View>
-          ))}
+          ) : null}
+          {!isLoading && !isError && favorites.length === 0 ? (
+            <View style={[styles.notesCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Text style={[styles.notesTitle, { color: colors.text }]}>No saved experiences yet</Text>
+              <Text style={[styles.notesBody, { color: colors.subtext }]}>
+                Open any experience and save it. If the new travel schema is not migrated yet, the app stores favorites locally.
+              </Text>
+            </View>
+          ) : null}
+          {!isLoading && !isError
+            ? favorites.map((experience) => (
+                <Pressable
+                  key={experience.id}
+                  style={[styles.tile, { backgroundColor: colors.card, borderColor: colors.border }]}
+                  onPress={() => navigation.navigate('ExperienceDetail', { event: experience })}
+                >
+                  <Text style={[styles.tileCountry, { color: colors.subtext }]}>
+                    {experience.location_name || 'Saved travel experience'}
+                  </Text>
+                  <Text style={[styles.tileTitle, { color: colors.text }]}>{experience.title}</Text>
+                  <Text style={[styles.tileBody, { color: colors.subtext }]}>
+                    {experience.summary || experience.description || 'Saved for itinerary planning and later booking.'}
+                  </Text>
+                </Pressable>
+              ))
+            : null}
         </View>
       </View>
 
       <View style={[styles.notesCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <Text style={[styles.notesTitle, { color: colors.text }]}>Next professional upgrade</Text>
         <Text style={[styles.notesBody, { color: colors.subtext }]}>
-          Connect this screen to real favorites, comparison tables, saved filters, and team-shared boards so users can
-          move naturally from inspiration to itinerary and booking.
+          The next layer is comparison tables, saved filters, collaborative boards, and destination-level wishlists.
         </Text>
       </View>
     </ScrollView>

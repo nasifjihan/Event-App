@@ -1,12 +1,13 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import PlanningCard from '@/features/travel/components/PlanningCard';
 import SectionHeader from '@/features/travel/components/SectionHeader';
-import { planningBoardItems } from '@/features/travel/data/travelCollections';
 import { useTheme } from '@/theme/ThemeContext';
+import { useTripPlans } from '@/hooks/useTripPlans';
 
 export default function TripsScreen() {
   const { colors } = useTheme();
+  const { data: tripPlans = [], isLoading, isError, error } = useTripPlans();
 
   return (
     <ScrollView
@@ -23,8 +24,7 @@ export default function TripsScreen() {
       <View style={[styles.summaryCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <Text style={[styles.summaryTitle, { color: colors.text }]}>Professional structure</Text>
         <Text style={[styles.summaryBody, { color: colors.subtext }]}>
-          The current implementation introduces a dedicated space for booked trips, in-progress itineraries,
-          and saved concepts. The next backend phase will connect this to live bookings and planner items.
+          This board now reads from live trip plans when the new schema exists, and safely falls back while migration is in progress.
         </Text>
       </View>
 
@@ -34,7 +34,24 @@ export default function TripsScreen() {
           subtitle="Modeled as a single place for travel operations, collaboration, and itinerary checkpoints."
         />
         <View style={styles.list}>
-          {planningBoardItems.map((item) => (
+          {isLoading ? <ActivityIndicator style={{ marginTop: 12 }} size="large" color={colors.text} /> : null}
+          {isError ? (
+            <View style={[styles.summaryCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Text style={[styles.summaryTitle, { color: colors.text }]}>Trip plans are unavailable</Text>
+              <Text style={[styles.summaryBody, { color: colors.subtext }]}>
+                {error instanceof Error ? error.message : 'Please try again later.'}
+              </Text>
+            </View>
+          ) : null}
+          {!isLoading && !isError && tripPlans.length === 0 ? (
+            <View style={[styles.summaryCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Text style={[styles.summaryTitle, { color: colors.text }]}>No trip plans yet</Text>
+              <Text style={[styles.summaryBody, { color: colors.subtext }]}>
+                Create trip plans in the new Supabase schema to replace the temporary planning fallback.
+              </Text>
+            </View>
+          ) : null}
+          {!isLoading && !isError && tripPlans.map((item) => (
             <PlanningCard key={item.id} item={item} />
           ))}
         </View>

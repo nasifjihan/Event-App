@@ -1,13 +1,13 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { PlanningBoardItem } from '@/features/travel/types';
 import { useTheme } from '@/theme/ThemeContext';
+import { TravelTripPlan } from '@/types/travel';
 
 interface Props {
-  item: PlanningBoardItem;
+  item: TravelTripPlan;
 }
 
-const STATUS_LABELS: Record<PlanningBoardItem['status'], string> = {
+const STATUS_LABELS: Record<TravelTripPlan['status'], string> = {
   booked: 'Booked',
   draft: 'Draft',
   saved: 'Saved',

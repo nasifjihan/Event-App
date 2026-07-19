@@ -1,12 +1,13 @@
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Image } from 'expo-image';
 import dayjs from 'dayjs';
-import { useAttendance } from '@/hooks/useAttendance';
 import { TravelStackParamList } from '@/navigation/TravelStackNavigator';
 import { useTheme } from '@/theme/ThemeContext';
+import { useTravelReservation } from '@/hooks/useTravelReservation';
+import { useFavoriteExperiences } from '@/hooks/useFavoriteExperiences';
 
 const DEFAULT_IMAGE =
   'https://coresg-normal.trae.ai/api/ide/v1/text_to_image?prompt=premium%20travel%20experience%20destination%20hero%20image%2C%20luxury%20editorial%20tourism%20photography%2C%20warm%20light%2C%20realistic&image_size=landscape_16_9';
@@ -16,7 +17,31 @@ export default function ExperienceDetailScreen() {
   const route = useRoute<RouteProp<TravelStackParamList, 'ExperienceDetail'>>();
   const { colors } = useTheme();
   const { event } = route.params;
-  const { count, isAttending, isLoading, isToggling, toggle } = useAttendance(event);
+  const { count, isReserved, isLoading, isToggling, toggle } = useTravelReservation(event);
+  const { favoriteIds, toggleFavorite } = useFavoriteExperiences();
+  const isFavorite = favoriteIds.has(event.id);
+
+  const handleFavoriteToggle = async () => {
+    try {
+      await toggleFavorite(event.id);
+    } catch (error) {
+      Alert.alert(
+        'Could not update favorites',
+        error instanceof Error ? error.message : 'Something went wrong.'
+      );
+    }
+  };
+
+  const handleReservationToggle = async () => {
+    try {
+      await toggle();
+    } catch (error) {
+      Alert.alert(
+        'Could not update reservation',
+        error instanceof Error ? error.message : 'Something went wrong.'
+      );
+    }
+  };
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
@@ -41,6 +66,12 @@ export default function ExperienceDetailScreen() {
             <Text style={styles.heroMeta}>
               {event.location_name || 'Flexible destination'} · {dayjs(event.starts_at).format('dddd, MMM D · h:mm A')}
             </Text>
+            {event.price_amount != null ? (
+              <Text style={styles.heroMeta}>
+                {event.currency ?? 'USD'} {event.price_amount}
+                {event.duration_minutes ? ` · ${event.duration_minutes} min` : ''}
+              </Text>
+            ) : null}
           </View>
         </View>
 
@@ -48,39 +79,49 @@ export default function ExperienceDetailScreen() {
           <View style={[styles.statsRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={styles.statBlock}>
               <Text style={[styles.statValue, { color: colors.text }]}>{isLoading ? '...' : count}</Text>
-              <Text style={[styles.statLabel, { color: colors.subtext }]}>Travelers interested</Text>
+              <Text style={[styles.statLabel, { color: colors.subtext }]}>Reservations</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statBlock}>
               <Text style={[styles.statValue, { color: colors.text }]}>
-                {event.location_name ? 'Hosted' : 'Flexible'}
+                {event.source === 'experience' ? 'Travel' : 'Legacy'}
               </Text>
-              <Text style={[styles.statLabel, { color: colors.subtext }]}>Experience mode</Text>
+              <Text style={[styles.statLabel, { color: colors.subtext }]}>Inventory source</Text>
             </View>
           </View>
 
           <Pressable
-            onPress={toggle}
+            onPress={handleFavoriteToggle}
+            style={[styles.secondaryButton, { backgroundColor: colors.card, borderColor: colors.border }]}
+          >
+            <Text style={[styles.secondaryButtonText, { color: colors.text }]}>
+              {isFavorite ? 'Saved to favorites' : 'Save for later'}
+            </Text>
+          </Pressable>
+
+          <Pressable
+            onPress={handleReservationToggle}
             disabled={isToggling || isLoading}
             style={[
               styles.primaryButton,
-              { backgroundColor: isAttending ? colors.card : colors.text, borderColor: colors.border },
+              { backgroundColor: isReserved ? colors.card : colors.text, borderColor: colors.border },
             ]}
           >
             <Text
               style={[
                 styles.primaryButtonText,
-                { color: isAttending ? colors.text : colors.background },
+                { color: isReserved ? colors.text : colors.background },
               ]}
             >
-              {isAttending ? 'Reserved - tap to remove' : 'Reserve this experience'}
+              {isReserved ? 'Reserved - tap to remove' : 'Reserve this experience'}
             </Text>
           </Pressable>
 
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Experience overview</Text>
             <Text style={[styles.sectionBody, { color: colors.subtext }]}>
-              {event.description ||
+              {event.summary ||
+                event.description ||
                 'A premium travel detail page should explain the flow, the hosting context, and why this activity belongs inside a larger trip plan.'}
             </Text>
           </View>
@@ -184,7 +225,18 @@ const styles = StyleSheet.create({
     marginTop: 18,
     borderWidth: 1,
   },
+  secondaryButton: {
+    borderRadius: 18,
+    paddingVertical: 15,
+    alignItems: 'center',
+    marginTop: 18,
+    borderWidth: 1,
+  },
   primaryButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  secondaryButtonText: {
     fontSize: 15,
     fontWeight: '700',
   },

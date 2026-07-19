@@ -1,10 +1,10 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { EventRow } from '@/types/event';
 import ExploreScreen from '@/screens/explore/ExploreScreen';
 import CreateExperienceScreen from '@/screens/travel/CreateExperienceScreen';
 import PickExperienceLocationScreen from '@/screens/travel/PickExperienceLocationScreen';
 import ExperienceDetailScreen from '@/screens/travel/ExperienceDetailScreen';
+import { TravelExperience } from '@/types/travel';
 
 export interface PickedLocation {
   latitude: number;
@@ -16,7 +16,7 @@ export type TravelStackParamList = {
   ExploreHome: undefined;
   CreateExperience: { pickedLocation?: PickedLocation } | undefined;
   PickExperienceLocation: undefined;
-  ExperienceDetail: { event: EventRow };
+  ExperienceDetail: { event: TravelExperience };
 };
 
 const Stack = createNativeStackNavigator<TravelStackParamList>();

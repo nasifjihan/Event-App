@@ -77,12 +77,23 @@ create table if not exists public.bookings (
 );
 
 create table if not exists public.favorites (
+  id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
   destination_id uuid references public.destinations(id) on delete cascade,
   experience_id uuid references public.experiences(id) on delete cascade,
   created_at timestamptz not null default now(),
-  primary key (user_id, destination_id, experience_id)
+  check (
+    ((destination_id is not null)::int + (experience_id is not null)::int) = 1
+  )
 );
+
+create unique index if not exists favorites_user_destination_unique
+  on public.favorites (user_id, destination_id)
+  where destination_id is not null;
+
+create unique index if not exists favorites_user_experience_unique
+  on public.favorites (user_id, experience_id)
+  where experience_id is not null;
 
 alter table public.profiles enable row level security;
 alter table public.destinations enable row level security;

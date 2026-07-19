@@ -1,9 +1,8 @@
 import {
-  DestinationSpotlight,
-  PlanningBoardItem,
   TravelCategory,
   TravelerInsight,
 } from '@/features/travel/types';
+import { TravelDestination, TravelTripPlan } from '@/types/travel';
 
 export const travelCategories: TravelCategory[] = [
   {
@@ -28,7 +27,7 @@ export const travelCategories: TravelCategory[] = [
   },
 ];
 
-export const destinationSpotlights: DestinationSpotlight[] = [
+export const destinationSpotlights: TravelDestination[] = [
   {
     id: 'bali',
     title: 'Bali Escape',
@@ -58,7 +57,7 @@ export const destinationSpotlights: DestinationSpotlight[] = [
   },
 ];
 
-export const planningBoardItems: PlanningBoardItem[] = [
+export const planningBoardItems: TravelTripPlan[] = [
   {
     id: '1',
     title: 'Istanbul Long Weekend',
