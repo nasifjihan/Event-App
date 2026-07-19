@@ -100,3 +100,14 @@ The next backend phase should move core product workflows to `supabase/travel_sc
   - deployment and production checklist
 - `eas.json`
   - build profiles for development, preview, and production
+
+## Phase 7 Assets
+
+- `src/hooks/usePushTokenRegistration.ts`
+  - registers Expo push tokens from the mobile app and syncs them to `profiles`
+- `supabase/functions/notification-dispatch/index.ts`
+  - dispatches queued notifications and records delivery runs
+- `supabase/migrations/travel_launch_push_support.sql`
+  - backfills push-token support for already-created launch schemas
+- `scripts/launch-check.mjs`
+  - validates core launch assets and flags missing deployment setup

@@ -1182,6 +1182,20 @@ export async function updateNotificationPreferences(
   return preferences;
 }
 
+export async function upsertExpoPushToken(userId: string, expoPushToken: string): Promise<void> {
+  const { error } = await supabase
+    .from('profiles')
+    .update({
+      expo_push_token: expoPushToken,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', userId);
+
+  if (error && !isMissingTravelSchemaError(error.message)) {
+    throw new Error(error.message);
+  }
+}
+
 export async function fetchProviderProfile(userId: string): Promise<TravelProviderProfile> {
   const { data, error } = await supabase
     .from('provider_profiles')

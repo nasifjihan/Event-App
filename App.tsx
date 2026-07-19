@@ -10,6 +10,7 @@ import { mmkvQueryPersister } from '@/services/queryPersister';
 import { setupNetworkStatusListener } from '@/services/networkStatus';
 import { ThemeProvider, useTheme } from '@/theme/ThemeContext';
 import { useTravelProfileBootstrap } from '@/hooks/useTravelProfileBootstrap';
+import { usePushTokenRegistration } from '@/hooks/usePushTokenRegistration';
 
 const ONE_DAY_MS = 1000 * 60 * 60 * 24;
 
@@ -47,6 +48,7 @@ export default function App() {
 function AppContent() {
   const { isDark } = useTheme();
   useTravelProfileBootstrap();
+  usePushTokenRegistration();
 
   return (
     <>
