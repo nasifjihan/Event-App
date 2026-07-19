@@ -191,6 +191,15 @@ create policy "Authenticated users can read live experiences"
   on public.experiences for select
   using (auth.role() = 'authenticated' and status in ('published', 'live'));
 
+create policy "Admins read all experiences"
+  on public.experiences for select
+  using ((auth.jwt() -> 'app_metadata' ->> 'travel_role') = 'admin');
+
+create policy "Admins update all experiences"
+  on public.experiences for update
+  using ((auth.jwt() -> 'app_metadata' ->> 'travel_role') = 'admin')
+  with check ((auth.jwt() -> 'app_metadata' ->> 'travel_role') = 'admin');
+
 create policy "Users manage their own trip plans"
   on public.trip_plans for all
   using (auth.uid() = user_id)
