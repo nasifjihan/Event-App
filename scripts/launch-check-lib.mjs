@@ -2,6 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 export const requiredFiles = [
+  'app.config.ts',
+  '.env.example',
   'supabase/migrations/travel_launch_schema.sql',
   'supabase/migrations/travel_launch_seed.sql',
   'supabase/migrations/travel_launch_cutover.sql',

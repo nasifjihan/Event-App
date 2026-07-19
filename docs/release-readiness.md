@@ -11,8 +11,9 @@
 
 ## Required Setup
 
-- Add `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY`
-- Replace `YOUR_ANDROID_GOOGLE_MAPS_API_KEY` in `app.json`
+- Copy `.env.example` to `.env`
+- Add `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`, and `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY`
+- Confirm `app.config.ts` is the active Expo config and that Android Google Maps picks up the key from `process.env`
 - Apply:
   - `supabase/migrations/travel_launch_schema.sql`
   - `supabase/migrations/travel_launch_seed.sql`
@@ -29,9 +30,13 @@
 ## Verification
 
 - Run `npm run typecheck`
+- Run `npm run test:launch`
+- Run `npm run test`
 - Run `npm run doctor`
+- Run `npm run check`
 - Run `npm run launch:check`
 - Test `expo start --web`
+- Execute the full checklist in `docs/manual-qa-runbook.md`
 - Test provider onboarding, moderation, booking updates, and reservation history on a seeded account
 - Validate notification preference updates, Expo push token registration, and queued notification records
 
@@ -53,3 +58,8 @@
 - Admins review onboarding and pending experiences in the moderation center
 - New native experiences default to `pending_review`
 - Approved experiences move to `live`; rejected experiences move to `draft`
+
+## QA Handoff
+
+- `docs/manual-qa-runbook.md` is the release candidate walkthrough for traveler, provider, admin, and notification coverage
+- Capture screenshots or short notes for each checklist item before promoting a preview build to production
