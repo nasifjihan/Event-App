@@ -1,6 +1,6 @@
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
-import { Pressable, Text } from 'react-native';
+import { Text } from 'react-native';
 import DestinationCard from '@/features/travel/components/DestinationCard';
 
 jest.mock('expo-image', () => ({
@@ -19,7 +19,12 @@ const destination = {
 
 describe('DestinationCard', () => {
   it('renders travel destination copy', () => {
-    const tree = renderer.create(<DestinationCard destination={destination} />);
+    let tree;
+
+    act(() => {
+      tree = renderer.create(<DestinationCard destination={destination} />);
+    });
+
     const texts = tree.root.findAllByType(Text).map((node) => node.props.children);
 
     expect(texts).toEqual(
@@ -34,10 +39,15 @@ describe('DestinationCard', () => {
 
   it('calls onPress when the card is tapped', () => {
     const onPress = jest.fn();
-    const tree = renderer.create(<DestinationCard destination={destination} onPress={onPress} />);
+    let tree;
 
     act(() => {
-      tree.root.findByType(Pressable).props.onPress();
+      tree = renderer.create(<DestinationCard destination={destination} onPress={onPress} />);
+    });
+
+    act(() => {
+      const pressableNode = tree.root.find((node) => typeof node.props?.onPress === 'function');
+      pressableNode.props.onPress();
     });
 
     expect(onPress).toHaveBeenCalledTimes(1);

@@ -11,7 +11,7 @@
     "test:launch": "node --test scripts/launch-check-lib.test.mjs",
     "typecheck": "tsc --noEmit",
     "doctor": "npx expo-doctor",
-    "check": "npm run typecheck && npm run doctor && npm run test:launch",
+    "check": "npm run typecheck && npm run doctor && npm run test && npm run test:launch && npm run launch:check",
     "launch:check": "node scripts/launch-check.mjs"
   },
   "dependencies": {

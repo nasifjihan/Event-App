@@ -111,3 +111,18 @@ The next backend phase should move core product workflows to `supabase/travel_sc
   - backfills push-token support for already-created launch schemas
 - `scripts/launch-check.mjs`
   - validates core launch assets and flags missing deployment setup
+
+## Phase 8 Assets
+
+- `app.config.ts`
+  - switches Expo config to an env-driven setup so Android Maps uses `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY`
+- `scripts/launch-check-lib.mjs`
+  - extracts launch-readiness evaluation into a reusable module for scripted checks
+- `scripts/launch-check-lib.test.mjs`
+  - adds focused regression coverage for launch-readiness rules
+- `__tests__/DestinationCard.test.jsx`
+  - smoke-tests a core travel merchandising component
+- `__tests__/travelCollections.test.js`
+  - validates curated travel content integrity and generated image URL usage
+- `docs/manual-qa-runbook.md`
+  - provides release-candidate walkthroughs for traveler, provider, admin, and push notification QA
