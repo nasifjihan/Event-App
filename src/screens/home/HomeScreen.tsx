@@ -18,10 +18,9 @@ import { useCurrentLocation } from '@/hooks/useCurrentLocation';
 import { distanceInKm, formatDistance } from '@/utils/distance';
 import EventCard, { CARD_HEIGHT_WITH_MARGIN } from '@/components/events/EventCard';
 import EmptyEventsState from '@/components/events/EmptyEventsState';
-// import EventsMap from '@/components/maps/EventsMap';
+import EventsMap from '@/components/maps/EventsMap';
 import { HomeStackParamList } from '@/navigation/HomeStackNavigator';
 import { useTheme } from '@/theme/ThemeContext';
-import EventsMap from '@/components/maps/EventsMap.native';
 
 type ViewMode = 'list' | 'map';
 

@@ -1,8 +1,7 @@
-import React, { useMemo, useRef } from 'react';
-import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
+import React from 'react';
+import { View, Text, Image, Pressable, StyleSheet, ScrollView } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import dayjs from 'dayjs';
 import { HomeStackParamList } from '@/navigation/HomeStackNavigator';
 import { useAttendance } from '@/hooks/useAttendance';
@@ -13,12 +12,6 @@ export default function EventDetailScreen() {
   const { event } = route.params;
 
   const { count, isAttending, toggle, isToggling, isLoading } = useAttendance(event);
-
-  const bottomSheetRef = useRef<BottomSheet>(null);
-  // Two snap points: a short "peek" view and a nearly-full expanded view.
-  // The user drags between them — this is the standard bottom sheet pattern
-  // used all over real apps (Uber, Airbnb, Google Maps).
-  const snapPoints = useMemo(() => ['34%', '88%'], []);
 
   return (
     <View style={styles.container}>
@@ -32,8 +25,9 @@ export default function EventDetailScreen() {
         <Text style={styles.backButtonText}>‹</Text>
       </Pressable>
 
-      <BottomSheet ref={bottomSheetRef} index={0} snapPoints={snapPoints}>
-        <BottomSheetScrollView contentContainerStyle={styles.sheetContent}>
+      <View style={styles.sheet}>
+        <View style={styles.sheetHandle} />
+        <ScrollView contentContainerStyle={styles.sheetContent} showsVerticalScrollIndicator={false}>
           <Text style={styles.title}>{event.title}</Text>
           <Text style={styles.meta}>
             {dayjs(event.starts_at).format('dddd, MMM D · h:mm A')}
@@ -68,8 +62,8 @@ export default function EventDetailScreen() {
               <Text style={styles.description}>{event.description}</Text>
             </>
           ) : null}
-        </BottomSheetScrollView>
-      </BottomSheet>
+        </ScrollView>
+      </View>
     </View>
   );
 }
@@ -89,6 +83,25 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   backButtonText: { color: '#fff', fontSize: 24, lineHeight: 26 },
+  sheet: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '88%',
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+  },
+  sheetHandle: {
+    alignSelf: 'center',
+    width: 44,
+    height: 5,
+    borderRadius: 999,
+    backgroundColor: '#d0d0d0',
+    marginTop: 10,
+    marginBottom: 6,
+  },
   sheetContent: { padding: 20, paddingBottom: 60 },
   title: { fontSize: 24, fontWeight: '700', marginBottom: 8 },
   meta: { fontSize: 14, color: '#666', marginBottom: 4 },
