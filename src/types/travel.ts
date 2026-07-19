@@ -91,3 +91,33 @@ export interface TravelNotificationPreferences {
   promotions: boolean;
   providerAlerts: boolean;
 }
+
+export interface TravelProviderProfile {
+  userId: string;
+  businessName: string;
+  contactEmail: string | null;
+  portfolioUrl: string | null;
+  notes: string | null;
+  approvalStatus: 'not_started' | 'pending' | 'approved' | 'rejected';
+  reviewedAt: string | null;
+}
+
+export interface TravelModerationItem {
+  id: string;
+  title: string;
+  entityType: 'experience' | 'provider';
+  status: 'pending' | 'approved' | 'rejected';
+  submittedAt: string;
+  submittedByLabel: string;
+  notes: string | null;
+}
+
+export interface TravelAnalyticsSnapshot {
+  id: string;
+  capturedAt: string;
+  liveExperiences: number;
+  pendingBookings: number;
+  confirmedBookings: number;
+  projectedRevenue: number;
+  currency: string;
+}

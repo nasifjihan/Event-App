@@ -4,12 +4,15 @@ import { getItem, setItem } from '@/services/mmkvStorage';
 import { destinationSpotlights, planningBoardItems } from '@/features/travel/data/travelCollections';
 import { EventRow } from '@/types/event';
 import {
+  TravelAnalyticsSnapshot,
   TravelBookingHistoryItem,
   TravelDestination,
   TravelExperience,
   TravelExperiencesPage,
+  TravelModerationItem,
   TravelNotificationPreferences,
   TravelOperationsSummary,
+  TravelProviderProfile,
   TravelProviderBooking,
   TravelReservationStatus,
   TravelTripPlan,
@@ -22,6 +25,7 @@ const FAVORITES_KEY_PREFIX = 'travel-favorites:';
 const RESERVATIONS_KEY_PREFIX = 'travel-reservations:';
 const TRIP_PLANS_KEY_PREFIX = 'travel-trip-plans:';
 const NOTIFICATION_PREFERENCES_KEY_PREFIX = 'travel-notification-preferences:';
+const PROVIDER_PROFILE_KEY_PREFIX = 'travel-provider-profile:';
 
 interface ExperienceRow {
   id: string;
@@ -110,6 +114,26 @@ interface NotificationPreferencesRow {
   provider_alerts: boolean;
 }
 
+interface ProviderProfileRow {
+  user_id: string;
+  business_name: string | null;
+  contact_email: string | null;
+  portfolio_url: string | null;
+  notes: string | null;
+  approval_status: string;
+  reviewed_at: string | null;
+}
+
+interface AnalyticsSnapshotRow {
+  id: string;
+  captured_at: string;
+  live_experiences: number;
+  pending_bookings: number;
+  confirmed_bookings: number;
+  projected_revenue: number | string;
+  currency: string;
+}
+
 function isMissingTravelSchemaError(message: string): boolean {
   return /relation .* does not exist|could not find the table|schema cache|column .* does not exist/i.test(message);
 }
@@ -180,6 +204,53 @@ function setStoredNotificationPreferences(
   preferences: TravelNotificationPreferences
 ): void {
   setItem(`${NOTIFICATION_PREFERENCES_KEY_PREFIX}${userId}`, JSON.stringify(preferences));
+}
+
+function getStoredProviderProfile(userId: string): TravelProviderProfile {
+  const raw = getItem(`${PROVIDER_PROFILE_KEY_PREFIX}${userId}`);
+  if (!raw) {
+    return {
+      userId,
+      businessName: '',
+      contactEmail: null,
+      portfolioUrl: null,
+      notes: null,
+      approvalStatus: 'not_started',
+      reviewedAt: null,
+    };
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as TravelProviderProfile;
+    return {
+      userId,
+      businessName: parsed.businessName ?? '',
+      contactEmail: parsed.contactEmail ?? null,
+      portfolioUrl: parsed.portfolioUrl ?? null,
+      notes: parsed.notes ?? null,
+      approvalStatus:
+        parsed.approvalStatus === 'approved' ||
+        parsed.approvalStatus === 'rejected' ||
+        parsed.approvalStatus === 'pending'
+          ? parsed.approvalStatus
+          : 'not_started',
+      reviewedAt: parsed.reviewedAt ?? null,
+    };
+  } catch {
+    return {
+      userId,
+      businessName: '',
+      contactEmail: null,
+      portfolioUrl: null,
+      notes: null,
+      approvalStatus: 'not_started',
+      reviewedAt: null,
+    };
+  }
+}
+
+function setStoredProviderProfile(profile: TravelProviderProfile): void {
+  setItem(`${PROVIDER_PROFILE_KEY_PREFIX}${profile.userId}`, JSON.stringify(profile));
 }
 
 function toggleStoredId(prefix: string, userId: string, id: string): boolean {
@@ -314,6 +385,35 @@ function mapNotificationPreferences(row: NotificationPreferencesRow): TravelNoti
     tripReminders: row.trip_reminders,
     promotions: row.promotions,
     providerAlerts: row.provider_alerts,
+  };
+}
+
+function mapProviderProfile(row: ProviderProfileRow): TravelProviderProfile {
+  return {
+    userId: row.user_id,
+    businessName: row.business_name ?? '',
+    contactEmail: row.contact_email,
+    portfolioUrl: row.portfolio_url,
+    notes: row.notes,
+    approvalStatus:
+      row.approval_status === 'approved' ||
+      row.approval_status === 'rejected' ||
+      row.approval_status === 'pending'
+        ? row.approval_status
+        : 'not_started',
+    reviewedAt: row.reviewed_at,
+  };
+}
+
+function mapAnalyticsSnapshot(row: AnalyticsSnapshotRow): TravelAnalyticsSnapshot {
+  return {
+    id: row.id,
+    capturedAt: row.captured_at,
+    liveExperiences: row.live_experiences,
+    pendingBookings: row.pending_bookings,
+    confirmedBookings: row.confirmed_bookings,
+    projectedRevenue: Number(row.projected_revenue),
+    currency: row.currency,
   };
 }
 
@@ -497,7 +597,7 @@ export async function createTravelExperience(input: NewEventInput): Promise<Trav
       meeting_point: input.locationName || null,
       cover_image_url: coverImageUrl,
       starts_at: input.startsAt.toISOString(),
-      status: 'live',
+      status: 'pending_review',
     })
     .select(
       'id, host_id, title, summary, body, cover_image_url, meeting_point, starts_at, created_at, status, price_amount, currency, duration_minutes, capacity'
