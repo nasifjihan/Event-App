@@ -17,7 +17,7 @@ export default function EventDetailScreen() {
     <View style={styles.container}>
       <Image
         source={{ uri: event.cover_image_url ?? 'https://placehold.co/800x600?text=Event' }}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
         resizeMode="cover"
       />
 

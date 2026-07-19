@@ -11,25 +11,25 @@ export interface ThemeColors {
 }
 
 export const lightColors: ThemeColors = {
-  background: '#f6f6f7',
+  background: '#f4f7fb',
   card: '#ffffff',
-  text: '#111111',
-  subtext: '#666666',
-  border: '#e5e5e5',
-  primary: '#111111',
+  text: '#142033',
+  subtext: '#60708a',
+  border: '#d8e1ee',
+  primary: '#142033',
   primaryText: '#ffffff',
   inputBackground: '#ffffff',
-  danger: '#e53e3e',
+  danger: '#d84848',
 };
 
 export const darkColors: ThemeColors = {
-  background: '#0d0d0f',
-  card: '#1c1c1e',
-  text: '#f5f5f5',
-  subtext: '#a0a0a5',
-  border: '#2c2c2e',
-  primary: '#ffffff',
-  primaryText: '#111111',
-  inputBackground: '#1c1c1e',
-  danger: '#ff6b6b',
+  background: '#08111c',
+  card: '#111c2b',
+  text: '#f4f8ff',
+  subtext: '#9fb0c7',
+  border: '#223149',
+  primary: '#f4f8ff',
+  primaryText: '#08111c',
+  inputBackground: '#111c2b',
+  danger: '#ff7575',
 };

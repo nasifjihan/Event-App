@@ -1,14 +1,14 @@
 {
   "expo": {
-    "name": "Local Events",
-    "slug": "local-events-app",
+    "name": "Voyageo Travel",
+    "slug": "voyageo-travel",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.yourname.localevents",
+      "bundleIdentifier": "com.mbw.voyageotravel",
       "config": {
         "usesNonExemptEncryption": false
       },
@@ -19,7 +19,7 @@
       }
     },
     "android": {
-      "package": "com.yourname.localevents",
+      "package": "com.mbw.voyageotravel",
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",

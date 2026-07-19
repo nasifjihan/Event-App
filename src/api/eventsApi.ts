@@ -1,5 +1,4 @@
-import * as FileSystem from 'expo-file-system';
-import { decode } from 'base64-arraybuffer';
+import { File } from 'expo-file-system';
 import { supabase } from '@/config/supabase';
 import { EventRow, EventsPage } from '@/types/event';
 
@@ -21,21 +20,24 @@ export interface NewEventInput {
  * Uploads a local image (from camera or gallery) to Supabase Storage
  * and returns its public URL.
  *
- * We read the file as base64 and decode it to an ArrayBuffer rather than
- * using fetch()+blob() — blob uploads are unreliable in the React Native
- * environment, while this approach works consistently on iOS and Android.
+ * Expo SDK 57 recommends the class-based File API. We read the local image
+ * as bytes and upload the exact ArrayBuffer slice so Supabase receives
+ * the binary content without relying on deprecated filesystem helpers.
  */
 async function uploadEventImage(localUri: string, hostId: string): Promise<string> {
-  const base64 = await FileSystem.readAsStringAsync(localUri, {
-    encoding: FileSystem.EncodingType.Base64,
-  });
+  const file = new File(localUri);
+  const bytes = await file.bytes();
+  const binary = bytes.buffer.slice(
+    bytes.byteOffset,
+    bytes.byteOffset + bytes.byteLength
+  ) as ArrayBuffer;
 
   const fileExt = localUri.split('.').pop()?.toLowerCase() ?? 'jpg';
   const filePath = `${hostId}/${Date.now()}.${fileExt}`;
 
   const { error: uploadError } = await supabase.storage
     .from(COVER_IMAGES_BUCKET)
-    .upload(filePath, decode(base64), {
+    .upload(filePath, binary, {
       contentType: `image/${fileExt === 'jpg' ? 'jpeg' : fileExt}`,
     });
 
@@ -97,23 +99,23 @@ export async function fetchAllEventsForMap(): Promise<EventRow[]> {
     throw new Error(error.message);
   }
 
-  return data ?? [];
+  return (data as EventRow[] | null) ?? [];
 }
 
 /**
  * Fetches one page of events, newest-starting-first, optionally filtered
  * by a search term matched against the title.
  *
- * Pagination pattern: Supabase's `.range(from, to)` is the equivalent of
- * SQL's LIMIT/OFFSET. We ask for one extra row past what we need so we
- * can tell whether there's a next page without a separate COUNT query.
+ * Pagination pattern: fetch one extra row past the page size, then trim
+ * the result back to PAGE_SIZE so we can know whether another page exists
+ * without paying for a separate COUNT query.
  */
 export async function fetchEventsPage(
   page: number,
   searchQuery: string
 ): Promise<EventsPage> {
   const from = page * PAGE_SIZE;
-  const to = from + PAGE_SIZE - 1;
+  const to = from + PAGE_SIZE;
 
   let query = supabase
     .from('events')
@@ -133,10 +135,11 @@ export async function fetchEventsPage(
   }
 
   const events = data ?? [];
-  const hasNextPage = events.length === PAGE_SIZE;
+  const hasNextPage = events.length > PAGE_SIZE;
+  const visibleEvents = hasNextPage ? events.slice(0, PAGE_SIZE) : events;
 
   return {
-    events,
+    events: visibleEvents,
     nextPage: hasNextPage ? page + 1 : null,
   };
 }
