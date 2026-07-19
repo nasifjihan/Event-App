@@ -46,3 +46,16 @@ export interface TravelReservationStatus {
   count: number;
   isReserved: boolean;
 }
+
+export interface TravelBookingHistoryItem {
+  id: string;
+  experienceId: string;
+  title: string;
+  bookingStatus: string;
+  bookedAt: string;
+  startsAt: string | null;
+  locationName: string | null;
+  travelersCount: number;
+  totalAmount: number | null;
+  currency: string | null;
+}

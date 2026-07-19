@@ -45,6 +45,17 @@ The next backend phase should move core product workflows to `supabase/travel_sc
 
 1. Rebrand the app and clean technical debt.
 2. Introduce travel-first navigation and premium discovery screens.
-3. Migrate from `events` to `experiences`.
+3. Migrate from `events` to `experiences`, add provider operations, and surface reservation history.
 4. Add real saved items, trip plans, and bookings.
-5. Add provider/admin operations and server-side notifications.
+5. Add server-side notifications, admin workflows, and analytics.
+
+## Phase 3 Assets
+
+- `supabase/travel_cutover_from_events.sql`
+  - migrates legacy events and attendees into travel experiences and bookings
+- `supabase/travel_seed.sql`
+  - seeds featured destinations for the travel catalog
+- `src/screens/manage/ManageScreen.tsx`
+  - provider management surface for hosted inventory
+- `src/hooks/useBookingHistory.ts`
+  - traveler reservation history query

@@ -3,6 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import TravelStackNavigator from '@/navigation/TravelStackNavigator';
 import TripsScreen from '@/screens/trips/TripsScreen';
 import SavedScreen from '@/screens/saved/SavedScreen';
+import ManageScreen from '@/screens/manage/ManageScreen';
 import ProfileScreen from '@/screens/profile/ProfileScreen';
 import { useTheme } from '@/theme/ThemeContext';
 
@@ -10,6 +11,7 @@ export type TabParamList = {
   Explore: undefined;
   Trips: undefined;
   Saved: undefined;
+  Manage: undefined;
   Profile: undefined;
 };
 
@@ -31,6 +33,7 @@ export default function TabNavigator() {
       <Tab.Screen name="Explore" component={TravelStackNavigator} />
       <Tab.Screen name="Trips" component={TripsScreen} />
       <Tab.Screen name="Saved" component={SavedScreen} />
+      <Tab.Screen name="Manage" component={ManageScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );

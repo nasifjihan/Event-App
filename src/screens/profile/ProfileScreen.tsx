@@ -1,14 +1,17 @@
 import React from 'react';
-import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, Pressable, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { supabase } from '@/config/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { travelerInsights } from '@/features/travel/data/travelCollections';
 import { useTheme } from '@/theme/ThemeContext';
+import { useBookingHistory } from '@/hooks/useBookingHistory';
+import dayjs from 'dayjs';
 
 export default function ProfileScreen() {
   const { user } = useAuth();
   const { colors } = useTheme();
   const firstName = user?.user_metadata?.full_name?.split(' ')[0] ?? 'Traveler';
+  const { data: bookingHistory = [], isLoading, isError, error } = useBookingHistory();
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -43,11 +46,36 @@ export default function ProfileScreen() {
       </View>
 
       <View style={[styles.panel, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <Text style={[styles.panelTitle, { color: colors.text }]}>Next profile upgrade</Text>
-        <Text style={[styles.panelBody, { color: colors.subtext }]}>
-          Add traveler documents, loyalty info, emergency contacts, preferences, and review history to turn this into a
-          fully operational account area.
-        </Text>
+        <Text style={[styles.panelTitle, { color: colors.text }]}>Reservation history</Text>
+        {isLoading ? <ActivityIndicator style={{ marginTop: 10 }} size="small" color={colors.text} /> : null}
+        {isError ? (
+          <Text style={[styles.panelBody, { color: colors.subtext }]}>
+            {error instanceof Error ? error.message : 'Could not load reservation history.'}
+          </Text>
+        ) : null}
+        {!isLoading && !isError && bookingHistory.length === 0 ? (
+          <Text style={[styles.panelBody, { color: colors.subtext }]}>
+            No reservations yet. As you book experiences, they will appear here with status and schedule details.
+          </Text>
+        ) : null}
+        {!isLoading && !isError && bookingHistory.length > 0 ? (
+          <View style={styles.historyList}>
+            {bookingHistory.slice(0, 4).map((booking) => (
+              <View
+                key={booking.id}
+                style={[styles.historyCard, { backgroundColor: colors.background, borderColor: colors.border }]}
+              >
+                <Text style={[styles.historyTitle, { color: colors.text }]}>{booking.title}</Text>
+                <Text style={[styles.historyMeta, { color: colors.subtext }]}>
+                  {booking.locationName || 'Flexible destination'} · {booking.bookingStatus}
+                </Text>
+                <Text style={[styles.historyMeta, { color: colors.subtext }]}>
+                  {booking.startsAt ? dayjs(booking.startsAt).format('MMM D, YYYY · h:mm A') : 'Date pending'}
+                </Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
       </View>
 
       <Pressable style={[styles.button, { backgroundColor: colors.danger }]} onPress={handleLogout}>
@@ -105,6 +133,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 22,
     marginTop: 10,
+  },
+  historyList: {
+    marginTop: 12,
+    gap: 10,
+  },
+  historyCard: {
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 14,
+  },
+  historyTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  historyMeta: {
+    fontSize: 13,
+    marginTop: 6,
   },
   button: {
     borderRadius: 18,

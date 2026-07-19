@@ -4,6 +4,7 @@ import { getItem, setItem } from '@/services/mmkvStorage';
 import { destinationSpotlights, planningBoardItems } from '@/features/travel/data/travelCollections';
 import { EventRow } from '@/types/event';
 import {
+  TravelBookingHistoryItem,
   TravelDestination,
   TravelExperience,
   TravelExperiencesPage,
@@ -50,6 +51,29 @@ interface TripPlanRow {
   end_date: string | null;
   status: string;
   notes: string | null;
+}
+
+interface BookingHistoryRow {
+  id: string;
+  booking_status: string;
+  booked_at: string;
+  travelers_count: number;
+  total_amount: number | string | null;
+  currency: string | null;
+  experiences:
+    | {
+        id: string;
+        title: string;
+        meeting_point: string | null;
+        starts_at: string | null;
+      }
+    | {
+        id: string;
+        title: string;
+        meeting_point: string | null;
+        starts_at: string | null;
+      }[]
+    | null;
 }
 
 function isMissingTravelSchemaError(message: string): boolean {
@@ -156,6 +180,24 @@ function mapTripPlan(row: TripPlanRow): TravelTripPlan {
     subtitle: row.notes ?? 'A saved travel plan connected to your new planning workflow.',
     status,
     windowLabel: parts.length > 0 ? parts.join(' - ') : 'Dates to be confirmed',
+  };
+}
+
+function mapBookingHistory(row: BookingHistoryRow): TravelBookingHistoryItem | null {
+  const experience = Array.isArray(row.experiences) ? row.experiences[0] : row.experiences;
+  if (!experience) return null;
+
+  return {
+    id: row.id,
+    experienceId: experience.id,
+    title: experience.title,
+    bookingStatus: row.booking_status,
+    bookedAt: row.booked_at,
+    startsAt: experience.starts_at,
+    locationName: experience.meeting_point,
+    travelersCount: row.travelers_count,
+    totalAmount: row.total_amount == null ? null : Number(row.total_amount),
+    currency: row.currency,
   };
 }
 
@@ -540,4 +582,87 @@ export async function toggleExperienceReservation(
   }
 
   throw new Error(existingResult.error.message);
+}
+
+export async function fetchHostedExperiences(userId: string): Promise<TravelExperience[]> {
+  const { data, error } = await supabase
+    .from('experiences')
+    .select(
+      'id, host_id, title, summary, body, cover_image_url, meeting_point, starts_at, created_at, status, price_amount, currency, duration_minutes, capacity'
+    )
+    .eq('host_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (!error) {
+    const rows = (data as ExperienceRow[] | null) ?? [];
+    if (rows.length > 0) {
+      return rows.map(mapExperience);
+    }
+  }
+
+  if (!error || isMissingTravelSchemaError(error.message)) {
+    const { data: legacyData, error: legacyError } = await supabase
+      .from('events')
+      .select('*')
+      .eq('host_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (legacyError) throw new Error(legacyError.message);
+    return ((legacyData as EventRow[] | null) ?? []).map(mapLegacyEvent);
+  }
+
+  throw new Error(error.message);
+}
+
+export async function toggleHostedExperienceStatus(experience: TravelExperience): Promise<void> {
+  if (experience.source !== 'experience') {
+    throw new Error('Legacy events should be migrated before using provider status controls.');
+  }
+
+  const nextStatus = experience.status === 'live' ? 'draft' : 'live';
+  const { error } = await supabase
+    .from('experiences')
+    .update({
+      status: nextStatus,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', experience.id);
+
+  if (error) throw new Error(error.message);
+}
+
+export async function fetchBookingHistory(userId: string): Promise<TravelBookingHistoryItem[]> {
+  const { data, error } = await supabase
+    .from('bookings')
+    .select(
+      'id, booking_status, booked_at, travelers_count, total_amount, currency, experiences ( id, title, meeting_point, starts_at )'
+    )
+    .eq('user_id', userId)
+    .order('booked_at', { ascending: false });
+
+  if (!error) {
+    const rows = (data as BookingHistoryRow[] | null) ?? [];
+    return rows
+      .map(mapBookingHistory)
+      .filter((item): item is TravelBookingHistoryItem => Boolean(item));
+  }
+
+  if (isMissingTravelSchemaError(error.message)) {
+    const fallbackIds = getStoredIds(RESERVATIONS_KEY_PREFIX, userId);
+    const fallbackExperiences = await fetchSavedFallbackExperiences(fallbackIds);
+    return fallbackExperiences.map((experience) => ({
+      id: `fallback-${experience.id}`,
+      experienceId: experience.id,
+      title: experience.title,
+      bookingStatus: 'saved',
+      bookedAt: experience.created_at,
+      startsAt: experience.starts_at,
+      locationName: experience.location_name,
+      travelersCount: 1,
+      totalAmount: experience.price_amount,
+      currency: experience.currency,
+    }));
+  }
+
+  throw new Error(error.message);
 }

@@ -25,6 +25,7 @@ create table if not exists public.destinations (
 create table if not exists public.experiences (
   id uuid primary key default gen_random_uuid(),
   host_id uuid not null references auth.users(id) on delete cascade,
+  legacy_event_id uuid unique references public.events(id) on delete set null,
   destination_id uuid references public.destinations(id) on delete set null,
   title text not null,
   slug text unique not null,
@@ -37,6 +38,7 @@ create table if not exists public.experiences (
   starts_at timestamptz,
   duration_minutes integer,
   capacity integer,
+  source_kind text not null default 'native',
   status text not null default 'draft',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
