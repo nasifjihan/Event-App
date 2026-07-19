@@ -5,7 +5,8 @@
 - Use a seeded Supabase environment with launch migrations applied and `notification-dispatch` deployed.
 - Prepare four accounts: traveler, pending provider, approved provider, and admin.
 - Use a physical Android or iOS device for push-token and notification validation.
-- Populate `.env` from `.env.example` with valid Supabase and Google Maps values before testing.
+- Populate `.env` from `.env.example` with valid Supabase values before testing.
+- Add `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` only if you plan to validate Android native map screens.
 
 ## Traveler Flow
 

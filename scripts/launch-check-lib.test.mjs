@@ -9,7 +9,6 @@ test('evaluateLaunchReadiness passes when launch assets and scripts exist', () =
     envContents: [
       'EXPO_PUBLIC_SUPABASE_URL=https://example.supabase.co',
       'EXPO_PUBLIC_SUPABASE_ANON_KEY=test-anon-key',
-      'EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=test-google-maps-key',
     ].join('\n'),
     packageJson: {
       scripts: {
@@ -42,5 +41,4 @@ test('evaluateLaunchReadiness reports missing env values and scripts', () => {
   assert.ok(result.errors.some((message) => message.includes('docs/manual-qa-runbook.md')));
   assert.ok(result.errors.some((message) => message.includes('test:launch')));
   assert.ok(result.warnings.includes('Missing EXPO_PUBLIC_SUPABASE_ANON_KEY in .env'));
-  assert.ok(result.warnings.includes('Missing EXPO_PUBLIC_GOOGLE_MAPS_API_KEY in .env'));
 });

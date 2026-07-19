@@ -12,8 +12,9 @@
 ## Required Setup
 
 - Copy `.env.example` to `.env`
-- Add `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`, and `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY`
-- Confirm `app.config.ts` is the active Expo config and that Android Google Maps picks up the key from `process.env`
+- Add `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY`
+- Optionally add `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` only if you want Android native Google Maps screens
+- Confirm `app.config.ts` is the active Expo config; it only injects Android Google Maps config when the key is present
 - Apply:
   - `supabase/migrations/travel_launch_schema.sql`
   - `supabase/migrations/travel_launch_seed.sql`

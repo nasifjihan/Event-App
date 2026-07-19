@@ -37,10 +37,6 @@ export function evaluateLaunchReadiness({
     if (!/EXPO_PUBLIC_SUPABASE_ANON_KEY=.+/m.test(envContents)) {
       warnings.push('Missing EXPO_PUBLIC_SUPABASE_ANON_KEY in .env');
     }
-
-    if (!/EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=.+/m.test(envContents)) {
-      warnings.push('Missing EXPO_PUBLIC_GOOGLE_MAPS_API_KEY in .env');
-    }
   } else {
     warnings.push('No .env file found');
   }
