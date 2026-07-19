@@ -72,3 +72,14 @@ The next backend phase should move core product workflows to `supabase/travel_sc
   - create trip plans from the app UI
 - `src/screens/manage/EditHostedExperienceScreen.tsx`
   - edit native travel experiences after cutover
+
+## Phase 5 Assets
+
+- `src/hooks/useProviderBookings.ts`
+  - provider-side booking queue and status updates
+- `src/hooks/useTravelOperationsSummary.ts`
+  - operations metrics for inventory, bookings, and projected revenue
+- `src/hooks/useNotificationPreferences.ts`
+  - traveler/provider notification preferences
+- `supabase/travel_schema.sql`
+  - notification queue and booking-management policies

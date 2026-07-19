@@ -8,6 +8,9 @@ import {
   TravelDestination,
   TravelExperience,
   TravelExperiencesPage,
+  TravelNotificationPreferences,
+  TravelOperationsSummary,
+  TravelProviderBooking,
   TravelReservationStatus,
   TravelTripPlan,
 } from '@/types/travel';
@@ -18,6 +21,7 @@ const COVER_IMAGES_BUCKET = 'event-covers';
 const FAVORITES_KEY_PREFIX = 'travel-favorites:';
 const RESERVATIONS_KEY_PREFIX = 'travel-reservations:';
 const TRIP_PLANS_KEY_PREFIX = 'travel-trip-plans:';
+const NOTIFICATION_PREFERENCES_KEY_PREFIX = 'travel-notification-preferences:';
 
 interface ExperienceRow {
   id: string;
@@ -77,6 +81,35 @@ interface BookingHistoryRow {
     | null;
 }
 
+interface ProviderBookingRow {
+  id: string;
+  user_id: string;
+  booking_status: string;
+  booked_at: string;
+  travelers_count: number;
+  total_amount: number | string | null;
+  currency: string | null;
+  experiences:
+    | {
+        id: string;
+        title: string;
+        starts_at: string | null;
+      }
+    | {
+        id: string;
+        title: string;
+        starts_at: string | null;
+      }[]
+    | null;
+}
+
+interface NotificationPreferencesRow {
+  booking_confirmations: boolean;
+  trip_reminders: boolean;
+  promotions: boolean;
+  provider_alerts: boolean;
+}
+
 function isMissingTravelSchemaError(message: string): boolean {
   return /relation .* does not exist|could not find the table|schema cache|column .* does not exist/i.test(message);
 }
@@ -111,6 +144,42 @@ function getStoredTripPlans(userId: string): TravelTripPlan[] {
 
 function setStoredTripPlans(userId: string, tripPlans: TravelTripPlan[]): void {
   setItem(`${TRIP_PLANS_KEY_PREFIX}${userId}`, JSON.stringify(tripPlans));
+}
+
+function getStoredNotificationPreferences(userId: string): TravelNotificationPreferences {
+  const raw = getItem(`${NOTIFICATION_PREFERENCES_KEY_PREFIX}${userId}`);
+  if (!raw) {
+    return {
+      bookingConfirmations: true,
+      tripReminders: true,
+      promotions: false,
+      providerAlerts: true,
+    };
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as TravelNotificationPreferences;
+    return {
+      bookingConfirmations: !!parsed.bookingConfirmations,
+      tripReminders: !!parsed.tripReminders,
+      promotions: !!parsed.promotions,
+      providerAlerts: !!parsed.providerAlerts,
+    };
+  } catch {
+    return {
+      bookingConfirmations: true,
+      tripReminders: true,
+      promotions: false,
+      providerAlerts: true,
+    };
+  }
+}
+
+function setStoredNotificationPreferences(
+  userId: string,
+  preferences: TravelNotificationPreferences
+): void {
+  setItem(`${NOTIFICATION_PREFERENCES_KEY_PREFIX}${userId}`, JSON.stringify(preferences));
 }
 
 function toggleStoredId(prefix: string, userId: string, id: string): boolean {
@@ -216,6 +285,58 @@ function mapBookingHistory(row: BookingHistoryRow): TravelBookingHistoryItem | n
     totalAmount: row.total_amount == null ? null : Number(row.total_amount),
     currency: row.currency,
   };
+}
+
+function mapProviderBooking(
+  row: ProviderBookingRow,
+  travelerLabel: string
+): TravelProviderBooking | null {
+  const experience = Array.isArray(row.experiences) ? row.experiences[0] : row.experiences;
+  if (!experience) return null;
+
+  return {
+    id: row.id,
+    experienceId: experience.id,
+    experienceTitle: experience.title,
+    travelerLabel,
+    bookingStatus: row.booking_status,
+    bookedAt: row.booked_at,
+    startsAt: experience.starts_at,
+    travelersCount: row.travelers_count,
+    totalAmount: row.total_amount == null ? null : Number(row.total_amount),
+    currency: row.currency,
+  };
+}
+
+function mapNotificationPreferences(row: NotificationPreferencesRow): TravelNotificationPreferences {
+  return {
+    bookingConfirmations: row.booking_confirmations,
+    tripReminders: row.trip_reminders,
+    promotions: row.promotions,
+    providerAlerts: row.provider_alerts,
+  };
+}
+
+async function queueNotification(args: {
+  userId: string;
+  category: string;
+  title: string;
+  body: string;
+  relatedBookingId?: string;
+  relatedExperienceId?: string;
+}): Promise<void> {
+  const { error } = await supabase.from('notification_queue').insert({
+    user_id: args.userId,
+    category: args.category,
+    title: args.title,
+    body: args.body,
+    related_booking_id: args.relatedBookingId ?? null,
+    related_experience_id: args.relatedExperienceId ?? null,
+  });
+
+  if (error && !isMissingTravelSchemaError(error.message)) {
+    throw new Error(error.message);
+  }
 }
 
 async function uploadTravelImage(localUri: string, hostId: string): Promise<string> {
@@ -697,6 +818,115 @@ export async function toggleHostedExperienceStatus(experience: TravelExperience)
   if (error) throw new Error(error.message);
 }
 
+export async function fetchProviderBookings(userId: string): Promise<TravelProviderBooking[]> {
+  const { data, error } = await supabase
+    .from('bookings')
+    .select(
+      'id, user_id, booking_status, booked_at, travelers_count, total_amount, currency, experiences!inner ( id, title, starts_at, host_id )'
+    )
+    .eq('experiences.host_id', userId)
+    .order('booked_at', { ascending: false });
+
+  if (!error) {
+    const rows = ((data as Array<ProviderBookingRow & { experiences: ProviderBookingRow['experiences'] & { host_id?: string } }> | null) ?? [])
+      .map((row) => ({
+        ...row,
+        experiences: Array.isArray(row.experiences)
+          ? row.experiences.map(({ id, title, starts_at }) => ({ id, title, starts_at }))
+          : row.experiences
+            ? {
+                id: row.experiences.id,
+                title: row.experiences.title,
+                starts_at: row.experiences.starts_at,
+              }
+            : null,
+      })) as ProviderBookingRow[];
+
+    const travelerIds = Array.from(new Set(rows.map((row) => row.user_id)));
+    const { data: profileRows } =
+      travelerIds.length > 0
+        ? await supabase.from('profiles').select('id, full_name').in('id', travelerIds)
+        : { data: [] };
+
+    const travelerMap = new Map(
+      ((profileRows as Array<{ id: string; full_name: string | null }> | null) ?? []).map((profile) => [
+        profile.id,
+        profile.full_name || 'Traveler',
+      ])
+    );
+
+    return rows
+      .map((row) => mapProviderBooking(row, travelerMap.get(row.user_id) ?? 'Traveler'))
+      .filter((item): item is TravelProviderBooking => Boolean(item));
+  }
+
+  if (isMissingTravelSchemaError(error.message)) {
+    return [];
+  }
+
+  throw new Error(error.message);
+}
+
+export async function updateProviderBookingStatus(
+  bookingId: string,
+  bookingStatus: 'pending' | 'confirmed' | 'cancelled'
+): Promise<void> {
+  const bookingLookup = await supabase
+    .from('bookings')
+    .select('id, user_id, experience_id')
+    .eq('id', bookingId)
+    .single();
+
+  if (bookingLookup.error) {
+    throw new Error(bookingLookup.error.message);
+  }
+
+  const { error } = await supabase
+    .from('bookings')
+    .update({ booking_status: bookingStatus })
+    .eq('id', bookingId);
+
+  if (error) throw new Error(error.message);
+
+  await queueNotification({
+    userId: bookingLookup.data.user_id,
+    category: 'booking_status',
+    title: bookingStatus === 'confirmed' ? 'Booking confirmed' : bookingStatus === 'cancelled' ? 'Booking cancelled' : 'Booking updated',
+    body:
+      bookingStatus === 'confirmed'
+        ? 'Your reservation has been confirmed by the provider.'
+        : bookingStatus === 'cancelled'
+          ? 'Your reservation has been cancelled by the provider.'
+          : 'Your reservation status has changed.',
+    relatedBookingId: bookingId,
+    relatedExperienceId: bookingLookup.data.experience_id,
+  });
+}
+
+export async function fetchTravelOperationsSummary(userId: string): Promise<TravelOperationsSummary> {
+  const [experiences, bookings] = await Promise.all([
+    fetchHostedExperiences(userId),
+    fetchProviderBookings(userId),
+  ]);
+
+  const totalBookings = bookings.length;
+  const confirmedBookings = bookings.filter((item) => item.bookingStatus === 'confirmed').length;
+  const pendingBookings = bookings.filter((item) => item.bookingStatus === 'pending').length;
+  const projectedRevenue = bookings.reduce((sum, item) => sum + (item.totalAmount ?? 0), 0);
+
+  return {
+    liveExperiences: experiences.filter((item) => item.status === 'live').length,
+    draftExperiences: experiences.filter((item) => item.status !== 'live').length,
+    nativeExperiences: experiences.filter((item) => item.source === 'experience').length,
+    legacyExperiences: experiences.filter((item) => item.source !== 'experience').length,
+    totalBookings,
+    confirmedBookings,
+    pendingBookings,
+    projectedRevenue,
+    currency: bookings.find((item) => item.currency)?.currency ?? 'USD',
+  };
+}
+
 export async function fetchBookingHistory(userId: string): Promise<TravelBookingHistoryItem[]> {
   const { data, error } = await supabase
     .from('bookings')
@@ -794,4 +1024,60 @@ export async function createTripPlan(input: CreateTripPlanInput): Promise<Travel
     throw new Error(error.message);
   }
   return mapTripPlan(data as TripPlanRow);
+}
+
+export async function fetchNotificationPreferences(
+  userId: string
+): Promise<TravelNotificationPreferences> {
+  const { data, error } = await supabase
+    .from('notification_preferences')
+    .select('booking_confirmations, trip_reminders, promotions, provider_alerts')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (!error && data) {
+    return mapNotificationPreferences(data as NotificationPreferencesRow);
+  }
+
+  if (!error) {
+    return getStoredNotificationPreferences(userId);
+  }
+
+  if (isMissingTravelSchemaError(error.message)) {
+    return getStoredNotificationPreferences(userId);
+  }
+
+  throw new Error(error.message);
+}
+
+export async function updateNotificationPreferences(
+  userId: string,
+  preferences: TravelNotificationPreferences
+): Promise<TravelNotificationPreferences> {
+  const { data, error } = await supabase
+    .from('notification_preferences')
+    .upsert(
+      {
+        user_id: userId,
+        booking_confirmations: preferences.bookingConfirmations,
+        trip_reminders: preferences.tripReminders,
+        promotions: preferences.promotions,
+        provider_alerts: preferences.providerAlerts,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'user_id', ignoreDuplicates: false }
+    )
+    .select('booking_confirmations, trip_reminders, promotions, provider_alerts')
+    .single();
+
+  if (!error && data) {
+    return mapNotificationPreferences(data as NotificationPreferencesRow);
+  }
+
+  if (error && !isMissingTravelSchemaError(error.message)) {
+    throw new Error(error.message);
+  }
+
+  setStoredNotificationPreferences(userId, preferences);
+  return preferences;
 }

@@ -59,3 +59,35 @@ export interface TravelBookingHistoryItem {
   totalAmount: number | null;
   currency: string | null;
 }
+
+export interface TravelProviderBooking {
+  id: string;
+  experienceId: string;
+  experienceTitle: string;
+  travelerLabel: string;
+  bookingStatus: string;
+  bookedAt: string;
+  startsAt: string | null;
+  travelersCount: number;
+  totalAmount: number | null;
+  currency: string | null;
+}
+
+export interface TravelOperationsSummary {
+  liveExperiences: number;
+  draftExperiences: number;
+  nativeExperiences: number;
+  legacyExperiences: number;
+  totalBookings: number;
+  confirmedBookings: number;
+  pendingBookings: number;
+  projectedRevenue: number;
+  currency: string;
+}
+
+export interface TravelNotificationPreferences {
+  bookingConfirmations: boolean;
+  tripReminders: boolean;
+  promotions: boolean;
+  providerAlerts: boolean;
+}

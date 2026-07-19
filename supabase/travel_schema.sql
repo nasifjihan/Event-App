@@ -89,6 +89,30 @@ create table if not exists public.favorites (
   )
 );
 
+create table if not exists public.notification_preferences (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  booking_confirmations boolean not null default true,
+  trip_reminders boolean not null default true,
+  promotions boolean not null default false,
+  provider_alerts boolean not null default true,
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.notification_queue (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  category text not null,
+  title text not null,
+  body text not null,
+  related_booking_id uuid references public.bookings(id) on delete set null,
+  related_experience_id uuid references public.experiences(id) on delete set null,
+  delivery_channel text not null default 'in_app',
+  delivery_status text not null default 'queued',
+  scheduled_for timestamptz not null default now(),
+  sent_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
 create unique index if not exists favorites_user_destination_unique
   on public.favorites (user_id, destination_id)
   where destination_id is not null;
@@ -104,6 +128,8 @@ alter table public.trip_plans enable row level security;
 alter table public.trip_plan_items enable row level security;
 alter table public.bookings enable row level security;
 alter table public.favorites enable row level security;
+alter table public.notification_preferences enable row level security;
+alter table public.notification_queue enable row level security;
 
 create policy "Profiles are readable by authenticated users"
   on public.profiles for select
@@ -156,7 +182,46 @@ create policy "Users manage their own bookings"
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
+create policy "Hosts read bookings for their experiences"
+  on public.bookings for select
+  using (
+    exists (
+      select 1
+      from public.experiences e
+      where e.id = bookings.experience_id
+        and e.host_id = auth.uid()
+    )
+  );
+
+create policy "Hosts update bookings for their experiences"
+  on public.bookings for update
+  using (
+    exists (
+      select 1
+      from public.experiences e
+      where e.id = bookings.experience_id
+        and e.host_id = auth.uid()
+    )
+  )
+  with check (
+    exists (
+      select 1
+      from public.experiences e
+      where e.id = bookings.experience_id
+        and e.host_id = auth.uid()
+    )
+  );
+
 create policy "Users manage their own favorites"
   on public.favorites for all
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
+
+create policy "Users manage their notification preferences"
+  on public.notification_preferences for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+create policy "Users read their own notification queue"
+  on public.notification_queue for select
+  using (auth.uid() = user_id);

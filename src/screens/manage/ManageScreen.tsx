@@ -2,8 +2,11 @@ import React from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import dayjs from 'dayjs';
 import SectionHeader from '@/features/travel/components/SectionHeader';
 import { useHostedExperiences } from '@/hooks/useHostedExperiences';
+import { useProviderBookings } from '@/hooks/useProviderBookings';
+import { useTravelOperationsSummary } from '@/hooks/useTravelOperationsSummary';
 import { useTheme } from '@/theme/ThemeContext';
 import { ManageStackParamList } from '@/navigation/ManageStackNavigator';
 
@@ -11,11 +14,15 @@ export default function ManageScreen() {
   const { colors } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<ManageStackParamList>>();
   const { experiences, isLoading, isError, error, refetch, toggleStatus } = useHostedExperiences();
-
-  const liveCount = experiences.filter((item) => item.status === 'live').length;
-  const draftCount = experiences.filter((item) => item.status !== 'live').length;
-  const nativeCount = experiences.filter((item) => item.source === 'experience').length;
-  const legacyCount = experiences.filter((item) => item.source !== 'experience').length;
+  const {
+    bookings,
+    isLoading: isBookingsLoading,
+    isError: isBookingsError,
+    error: bookingsError,
+    updateStatus,
+    isUpdating,
+  } = useProviderBookings();
+  const { data: operationsSummary } = useTravelOperationsSummary();
 
   const handleToggleStatus = async (experienceId: string) => {
     const experience = experiences.find((item) => item.id === experienceId);
@@ -27,6 +34,20 @@ export default function ManageScreen() {
       Alert.alert(
         'Could not update experience',
         toggleError instanceof Error ? toggleError.message : 'Something went wrong.'
+      );
+    }
+  };
+
+  const handleBookingStatusUpdate = async (
+    bookingId: string,
+    bookingStatus: 'pending' | 'confirmed' | 'cancelled'
+  ) => {
+    try {
+      await updateStatus({ bookingId, bookingStatus });
+    } catch (updateError) {
+      Alert.alert(
+        'Could not update booking',
+        updateError instanceof Error ? updateError.message : 'Something went wrong.'
       );
     }
   };
@@ -45,23 +66,36 @@ export default function ManageScreen() {
 
       <View style={styles.statsGrid}>
         <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Text style={[styles.statValue, { color: colors.text }]}>{operationsSummary?.liveExperiences ?? 0}</Text>
+          <Text style={[styles.statLabel, { color: colors.subtext }]}>Live now</Text>
+        </View>
+        <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Text style={[styles.statValue, { color: colors.text }]}>{operationsSummary?.pendingBookings ?? 0}</Text>
+          <Text style={[styles.statLabel, { color: colors.subtext }]}>Pending bookings</Text>
+        </View>
+        <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Text style={[styles.statValue, { color: colors.text }]}>
+            {operationsSummary ? `${operationsSummary.currency} ${operationsSummary.projectedRevenue}` : 'USD 0'}
+          </Text>
+          <Text style={[styles.statLabel, { color: colors.subtext }]}>Projected revenue</Text>
+        </View>
+      </View>
+
+      <View style={styles.statsGrid}>
+        <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={[styles.statValue, { color: colors.text }]}>{experiences.length}</Text>
           <Text style={[styles.statLabel, { color: colors.subtext }]}>Hosted experiences</Text>
         </View>
         <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.statValue, { color: colors.text }]}>{liveCount}</Text>
-          <Text style={[styles.statLabel, { color: colors.subtext }]}>Live now</Text>
-        </View>
-        <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.statValue, { color: colors.text }]}>{draftCount}</Text>
+          <Text style={[styles.statValue, { color: colors.text }]}>{operationsSummary?.draftExperiences ?? 0}</Text>
           <Text style={[styles.statLabel, { color: colors.subtext }]}>Needs action</Text>
         </View>
         <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.statValue, { color: colors.text }]}>{nativeCount}</Text>
+          <Text style={[styles.statValue, { color: colors.text }]}>{operationsSummary?.nativeExperiences ?? 0}</Text>
           <Text style={[styles.statLabel, { color: colors.subtext }]}>Native travel items</Text>
         </View>
         <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.statValue, { color: colors.text }]}>{legacyCount}</Text>
+          <Text style={[styles.statValue, { color: colors.text }]}>{operationsSummary?.legacyExperiences ?? 0}</Text>
           <Text style={[styles.statLabel, { color: colors.subtext }]}>Legacy items pending cutover</Text>
         </View>
       </View>
@@ -162,6 +196,80 @@ export default function ManageScreen() {
                           : 'Publish live'
                         : 'Migration required'}
                     </Text>
+                  </Pressable>
+                </View>
+              </View>
+            ))
+          : null}
+      </View>
+
+      <View style={styles.section}>
+        <SectionHeader
+          title="Booking operations"
+          subtitle="Provider-side booking management with status updates, traveler context, and revenue visibility."
+        />
+
+        {isBookingsLoading ? <ActivityIndicator style={{ marginTop: 20 }} size="large" color={colors.text} /> : null}
+        {isBookingsError ? (
+          <View style={[styles.messageCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.messageTitle, { color: colors.text }]}>Booking operations unavailable</Text>
+            <Text style={[styles.messageBody, { color: colors.subtext }]}>
+              {bookingsError instanceof Error ? bookingsError.message : 'Please try again later.'}
+            </Text>
+          </View>
+        ) : null}
+        {!isBookingsLoading && !isBookingsError && bookings.length === 0 ? (
+          <View style={[styles.messageCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.messageTitle, { color: colors.text }]}>No bookings yet</Text>
+            <Text style={[styles.messageBody, { color: colors.subtext }]}>
+              As travelers reserve experiences, the provider queue appears here for confirmation and cancellation workflows.
+            </Text>
+          </View>
+        ) : null}
+        {!isBookingsLoading && !isBookingsError
+          ? bookings.slice(0, 6).map((booking) => (
+              <View
+                key={booking.id}
+                style={[styles.inventoryCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+              >
+                <View style={styles.inventoryHeader}>
+                  <View style={styles.inventoryCopy}>
+                    <Text style={[styles.inventoryTitle, { color: colors.text }]}>{booking.experienceTitle}</Text>
+                    <Text style={[styles.inventoryMeta, { color: colors.subtext }]}>
+                      {booking.travelerLabel} · {booking.travelersCount} traveler{booking.travelersCount > 1 ? 's' : ''}
+                    </Text>
+                  </View>
+                  <View style={[styles.badge, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                    <Text style={[styles.badgeText, { color: colors.text }]}>{booking.bookingStatus}</Text>
+                  </View>
+                </View>
+
+                <Text style={[styles.inventoryBody, { color: colors.subtext }]}>
+                  {booking.startsAt ? dayjs(booking.startsAt).format('MMM D, YYYY · h:mm A') : 'Date pending'} ·{' '}
+                  {booking.currency ?? 'USD'} {booking.totalAmount ?? 0}
+                </Text>
+
+                <View style={styles.actionsRow}>
+                  <Pressable
+                    style={[styles.secondaryButton, { backgroundColor: colors.background, borderColor: colors.border }]}
+                    onPress={() => handleBookingStatusUpdate(booking.id, 'confirmed')}
+                    disabled={isUpdating}
+                  >
+                    <Text style={[styles.secondaryButtonText, { color: colors.text }]}>Confirm</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.secondaryButton, { backgroundColor: colors.background, borderColor: colors.border }]}
+                    onPress={() => handleBookingStatusUpdate(booking.id, 'pending')}
+                    disabled={isUpdating}
+                  >
+                    <Text style={[styles.secondaryButtonText, { color: colors.text }]}>Pending</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.primaryButton, { backgroundColor: colors.danger }]}
+                    onPress={() => handleBookingStatusUpdate(booking.id, 'cancelled')}
+                    disabled={isUpdating}
+                  >
+                    <Text style={[styles.primaryButtonText, { color: '#fff' }]}>Cancel</Text>
                   </Pressable>
                 </View>
               </View>
